@@ -1,0 +1,6 @@
+/* Required for transparent Tauri overlay on macOS (with macOSPrivateApi). */
+html,
+body,
+#root {
+  background: transparent;
+}

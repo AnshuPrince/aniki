@@ -1,0 +1,13 @@
+FROM postgres:16-alpine
+
+COPY apps/api/migrations/001_init.sql /migrations/001_init.sql
+COPY apps/api/migrations/002_indexes.sql /migrations/002_indexes.sql
+COPY apps/api/scripts/migrate.sh /migrate.sh
+RUN chmod +x /migrate.sh
+
+ENV PGHOST=postgres
+ENV PGUSER=aniki
+ENV PGPASSWORD=aniki
+ENV PGDATABASE=aniki
+
+ENTRYPOINT ["/migrate.sh"]

@@ -1,0 +1,22 @@
+{
+  "name": "aniki",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "dev:web": "pnpm --filter @aniki/web dev",
+    "dev:desktop": "pnpm --filter @aniki/desktop tauri dev",
+    "dev:api": "cargo run -p aniki-api",
+    "tauri": "pnpm --filter @aniki/desktop tauri"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

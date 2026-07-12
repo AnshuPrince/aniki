@@ -1,0 +1,18 @@
+[package]
+name = "aniki-audio-core"
+description = "Audio capture, VAD, and resampling for Aniki desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+cpal = "0.15"
+parking_lot = "0.12"
+
+[features]
+default = []

@@ -1,0 +1,41 @@
+[package]
+name = "aniki-desktop"
+version = "0.1.0"
+description = "Aniki desktop overlay — stealth interview assistant"
+authors = ["Aniki"]
+edition = "2021"
+
+[lib]
+name = "aniki_desktop_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "aniki-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+aniki-audio-core = { path = "../../../crates/audio-core" }
+aniki-stealth-window = { path = "../../../crates/stealth-window" }
+aniki-domain = { path = "../../../crates/domain" }
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-shell = "2"
+tauri-plugin-global-shortcut = "2"
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+futures-util = "0.3"
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+raw-window-handle = "0.6"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
