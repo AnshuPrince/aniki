@@ -36,4 +36,7 @@ rand = "0.8"
 dotenvy = "0.15"
 futures = "0.3"
 async-stream = "0.3"
-pgvector = { version = "0.4", features = ["sqlx"] }
+# Pinned: pgvector 0.4.2 widened its sqlx range to ">=0.8, <0.10", which lets Cargo
+# resolve sqlx 0.9 for pgvector while this crate stays on 0.8. Two sqlx-core copies
+# means `Vector` no longer satisfies our `sqlx::Type`. 0.4.1 requires "^0.8".
+pgvector = { version = "=0.4.1", features = ["sqlx"] }

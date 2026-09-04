@@ -50,6 +50,10 @@ Copy `apps/api/.env.example` to `apps/api/.env` and set:
 
 Web/desktop use `VITE_API_URL=http://localhost:8080` (default).
 
+`Cargo.lock` is committed. Build the workspace as locked — running `cargo update` can pull a
+`pgvector` release whose sqlx range spans 0.8 and 0.9, which puts two `sqlx-core` versions in the
+graph and fails with `the trait bound pgvector::Vector: sqlx::Type<_> is not satisfied`.
+
 ### Auth flow (dev)
 
 1. Open http://localhost:3000 and sign in with email

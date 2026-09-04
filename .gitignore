@@ -37,7 +37,6 @@ coverage/
 
 # Rust
 **/*.rs.bk
-Cargo.lock
 
 # Local data
 *.db
