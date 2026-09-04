@@ -54,6 +54,27 @@ Web/desktop use `VITE_API_URL=http://localhost:8080` (default).
 `pgvector` release whose sqlx range spans 0.8 and 0.9, which puts two `sqlx-core` versions in the
 graph and fails with `the trait bound pgvector::Vector: sqlx::Type<_> is not satisfied`.
 
+### Troubleshooting
+
+`GET /health` reports database reachability and live pool stats:
+
+```bash
+curl -s localhost:8080/health
+# {"database":"up","db_pool":{"idle":1,"size":2},"status":"ok",...}
+```
+
+**`pool timed out while waiting for an open connection`** — the API could not get a Postgres
+connection within `DATABASE_ACQUIRE_TIMEOUT_SECS`. Check, in order:
+
+1. Postgres is up: `docker compose ps` (the container must be `healthy`, not just running).
+2. It did not restart underneath a running API — restart `cargo run -p aniki-api` if it did.
+3. `DATABASE_URL` points at the right host/port.
+4. Server capacity: `docker compose exec postgres psql -U aniki -d aniki -c "show max_connections"`
+   and compare with `select count(*) from pg_stat_activity where datname='aniki'`.
+
+If `db_pool.size` is pinned at `DATABASE_MAX_CONNECTIONS` with `idle: 0`, requests are queueing —
+raise the limit or look for a slow query holding connections.
+
 ### Auth flow (dev)
 
 1. Open http://localhost:3000 and sign in with email
