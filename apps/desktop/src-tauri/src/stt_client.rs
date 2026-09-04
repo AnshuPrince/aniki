@@ -91,12 +91,21 @@ async fn run_mic_level_monitor(
 ) {
     while !*shutdown.borrow() {
         let level = {
-            let mut cap = capture.lock().await;
+            let cap = capture.lock().await;
             cap.mic_level()
+        };
+        let system_active = {
+            let cap = capture.lock().await;
+            cap.system_capturing()
         };
         let _ = app.emit(
             "mic-level",
-            json!({ "level": level, "active": level > 0.001 }).to_string(),
+            json!({
+                "level": level,
+                "active": level > 0.001,
+                "systemActive": system_active,
+            })
+            .to_string(),
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
@@ -161,15 +170,21 @@ async fn run_stt_with_audio(
                     }
                 }
                 _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {
-                    let (pcm, level) = {
+                    let (pcm, level, system_active) = {
                         let mut cap = capture.lock().await;
                         let level = cap.mic_level();
+                        let system_active = cap.system_capturing();
                         let pcm = cap.drain_interleaved_16k();
-                        (pcm, level)
+                        (pcm, level, system_active)
                     };
                     let _ = app.emit(
                         "mic-level",
-                        json!({ "level": level, "active": level > 0.001 }).to_string(),
+                        json!({
+                            "level": level,
+                            "active": level > 0.001,
+                            "systemActive": system_active,
+                        })
+                        .to_string(),
                     );
                     if !pcm.is_empty() {
                         let bytes: Vec<u8> = pcm.iter().flat_map(|s| s.to_le_bytes()).collect();

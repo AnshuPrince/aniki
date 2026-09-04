@@ -1,12 +1,14 @@
+mod collapse;
 mod commands;
-#[cfg(target_os = "macos")]
 mod macos_overlay;
+mod ocr;
 mod overlay_windows;
 mod stt_client;
+mod tray;
 
 use aniki_stealth_window::StealthWindowHandle;
-use commands::{set_click_through_for_app, toggle_click_through_for_app, AppAudioState};
-use tauri::{Manager, RunEvent, WebviewWindow, WindowEvent};
+use commands::{toggle_click_through_for_app, AppAudioState};
+use tauri::{Emitter, Manager, RunEvent, WebviewWindow, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, ShortcutState};
 
 pub(crate) struct TauriStealthWindow(pub WebviewWindow);
@@ -58,12 +60,8 @@ pub fn run() {
 
                     match shortcut.key {
                         Code::KeyH => {
-                            if overlay_windows::any_overlay_visible(app) {
-                                let _ = overlay_windows::hide_all_overlays(app);
-                            } else {
-                                let _ = set_click_through_for_app(app, false);
-                                let _ = overlay_windows::show_all_overlays(app);
-                            }
+                            let state = app.state::<collapse::CollapseState>();
+                            let _ = collapse::toggle_collapsed(app, &state);
                         }
                         Code::KeyC => {
                             let _ = toggle_click_through_for_app(app);
@@ -81,6 +79,7 @@ pub fn run() {
 
     builder
         .manage(AppAudioState::default())
+        .manage(collapse::CollapseState::default())
         .invoke_handler(tauri::generate_handler![
             commands::start_audio_session,
             commands::stop_audio_session,
@@ -93,11 +92,20 @@ pub fn run() {
             commands::get_click_through,
             commands::get_stealth_status,
             commands::capture_screen_ocr,
+            collapse::collapse_overlay_cmd,
+            collapse::expand_overlay_cmd,
+            collapse::toggle_collapsed_cmd,
+            collapse::is_collapsed_cmd,
         ])
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {
                 let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
+            if let Err(e) = tray::install(app) {
+                tracing::warn!(error = %e, "Failed to install system tray");
             }
 
             if let Some(window) = app.get_webview_window("main") {
@@ -114,6 +122,21 @@ pub fn run() {
                 tracing::warn!(error = %e, "Failed to configure overlay panel");
             }
 
+            // If window-state restored pebble dimensions, sync collapse flag.
+            if let Some(window) = app.get_webview_window("main") {
+                if let (Ok(size), Ok(scale)) = (window.inner_size(), window.scale_factor()) {
+                    let w = size.width as f64 / scale;
+                    let h = size.height as f64 / scale;
+                    if w <= collapse::PEBBLE_SIZE + 2.0 && h <= collapse::PEBBLE_SIZE + 2.0 {
+                        let state = app.state::<collapse::CollapseState>();
+                        if let Ok(mut collapsed) = state.collapsed.lock() {
+                            *collapsed = true;
+                        }
+                        let _ = app.handle().emit("overlay-collapsed", true);
+                    }
+                }
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -121,8 +144,9 @@ pub fn run() {
         .run(|app_handle, event| {
             match event {
                 RunEvent::ExitRequested { api, .. } => {
-                    // Accessory overlay app should stay alive when hidden (no dock icon).
-                    api.prevent_exit();
+                    if tray::should_prevent_exit() {
+                        api.prevent_exit();
+                    }
                 }
                 RunEvent::WindowEvent { label, event, .. } => {
                     if label == "main" {

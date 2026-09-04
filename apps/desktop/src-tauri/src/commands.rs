@@ -41,6 +41,8 @@ pub struct StealthStatusResponse {
 pub struct AudioStatusResponse {
     pub mic_active: bool,
     pub mic_level: f32,
+    pub system_capturing: bool,
+    pub system_level: f32,
     pub dev_stt_mode: bool,
     pub live_stt: bool,
 }
@@ -74,6 +76,9 @@ pub async fn start_audio_session(
         })
     });
 
+    let system_capturing = capture.system_capturing();
+    let system_level = capture.system_level();
+
     let handle = crate::stt_client::start_stt_session(
         app.clone(),
         stt_endpoint,
@@ -88,6 +93,8 @@ pub async fn start_audio_session(
     Ok(AudioStatusResponse {
         mic_active: true,
         mic_level: 0.0,
+        system_capturing,
+        system_level,
         dev_stt_mode: dev_mode,
         live_stt: !dev_mode,
     })
@@ -96,16 +103,24 @@ pub async fn start_audio_session(
 #[tauri::command]
 pub async fn get_audio_status(state: State<'_, AppAudioState>) -> Result<AudioStatusResponse, String> {
     let dev_mode = *state.dev_stt_mode.lock().map_err(|e| e.to_string())?;
-    let mut capture_guard = state.capture.lock().map_err(|e| e.to_string())?;
-    let (mic_active, mic_level) = if let Some(capture) = capture_guard.as_mut() {
-        (capture.is_running(), capture.mic_level())
-    } else {
-        (false, 0.0)
-    };
+    let capture_guard = state.capture.lock().map_err(|e| e.to_string())?;
+    let (mic_active, mic_level, system_capturing, system_level) =
+        if let Some(capture) = capture_guard.as_ref() {
+            (
+                capture.is_running(),
+                capture.mic_level(),
+                capture.system_capturing(),
+                capture.system_level(),
+            )
+        } else {
+            (false, 0.0, false, 0.0)
+        };
 
     Ok(AudioStatusResponse {
         mic_active,
         mic_level,
+        system_capturing,
+        system_level,
         dev_stt_mode: dev_mode,
         live_stt: !dev_mode,
     })
@@ -140,19 +155,21 @@ pub async fn refresh_stt_jwt(
 }
 
 #[tauri::command]
-pub async fn hide_overlay(app: tauri::AppHandle, state: State<'_, AppAudioState>) -> Result<(), String> {
-    let mut stealth = state.stealth.lock().map_err(|e| e.to_string())?;
-    stealth.panic_hide().map_err(|e| e.to_string())?;
+pub fn hide_overlay(app: tauri::AppHandle, state: State<'_, AppAudioState>) -> Result<(), String> {
+    {
+        let mut stealth = state.stealth.lock().map_err(|e| e.to_string())?;
+        stealth.panic_hide().map_err(|e| e.to_string())?;
+    }
     overlay_windows::hide_all_overlays(&app)
 }
 
 #[tauri::command]
-pub async fn panic_hide(app: tauri::AppHandle, state: State<'_, AppAudioState>) -> Result<(), String> {
-    hide_overlay(app, state).await
+pub fn panic_hide(app: tauri::AppHandle, state: State<'_, AppAudioState>) -> Result<(), String> {
+    hide_overlay(app, state)
 }
 
 #[tauri::command]
-pub async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
+pub fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
     set_click_through_for_app(&app, false)?;
     overlay_windows::show_all_overlays(&app)
 }
@@ -160,12 +177,6 @@ pub async fn show_overlay(app: tauri::AppHandle) -> Result<(), String> {
 pub fn set_click_through_for_app(app: &AppHandle, enabled: bool) -> Result<(), String> {
     let state = app.state::<AppAudioState>();
     *state.click_through.lock().map_err(|e| e.to_string())? = enabled;
-
-    if let Some(window) = app.get_webview_window("main") {
-        window
-            .set_ignore_cursor_events(enabled)
-            .map_err(|e| e.to_string())?;
-    }
 
     #[cfg(target_os = "macos")]
     {
@@ -176,6 +187,13 @@ pub fn set_click_through_for_app(app: &AppHandle, enabled: bool) -> Result<(), S
                 panel.show();
             }
         }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    if let Some(window) = app.get_webview_window("main") {
+        window
+            .set_ignore_cursor_events(enabled)
+            .map_err(|e| e.to_string())?;
     }
 
     let _ = app.emit("click-through-changed", enabled);
@@ -191,7 +209,7 @@ pub fn toggle_click_through_for_app(app: &AppHandle) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn toggle_click_through(
+pub fn toggle_click_through(
     app: tauri::AppHandle,
     state: State<'_, AppAudioState>,
 ) -> Result<bool, String> {
@@ -201,7 +219,7 @@ pub async fn toggle_click_through(
 }
 
 #[tauri::command]
-pub async fn get_click_through(state: State<'_, AppAudioState>) -> Result<bool, String> {
+pub fn get_click_through(state: State<'_, AppAudioState>) -> Result<bool, String> {
     Ok(*state.click_through.lock().map_err(|e| e.to_string())?)
 }
 
@@ -216,10 +234,10 @@ pub async fn get_stealth_status() -> Result<StealthStatusResponse, String> {
     })
 }
 
-/// Capture screen region and run OCR (stub — returns placeholder until Tesseract wired).
+/// Capture the main display and run OCR for coding-interview question context.
 #[tauri::command]
-pub async fn capture_screen_ocr() -> Result<String, String> {
-    Ok("Screen OCR stub: integrate Tesseract in production build.".to_string())
+pub fn capture_screen_ocr() -> Result<String, String> {
+    crate::ocr::capture_screen_ocr()
 }
 
 pub fn apply_stealth(window: &WebviewWindow) -> Result<(), String> {

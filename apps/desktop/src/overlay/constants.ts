@@ -1,0 +1,14 @@
+export const TOKEN_KEY = "aniki_access_token";
+
+export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+export const WEB_URL = import.meta.env.VITE_WEB_URL ?? "http://localhost:5173";
+
+export const SHELL_SIZE = { width: 380, height: 640 } as const;
+export const LIVE_SIZE = { width: 520, height: 720 } as const;
+export const MIN_EXPANDED = { width: 280, height: 280 } as const;
+
+export const MODEL_OPTIONS = [
+  { value: "gpt41" as const, label: "GPT-4.1" },
+  { value: "claude_sonnet" as const, label: "Claude Sonnet" },
+  { value: "gpt41_mini" as const, label: "GPT-4.1 Mini" },
+];

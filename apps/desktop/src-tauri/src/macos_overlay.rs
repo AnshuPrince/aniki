@@ -18,6 +18,7 @@ pub fn configure_overlay_panel(window: &tauri::WebviewWindow) -> Result<(), Stri
     panel.set_style_mask(NS_NONACTIVATING_PANEL);
     panel.set_floating_panel(true);
     panel.set_hides_on_deactivate(false);
+    panel.set_released_when_closed(false);
     panel.set_works_when_modal(true);
     panel.set_becomes_key_only_if_needed(true);
     panel.set_collection_behaviour(
@@ -32,33 +33,24 @@ pub fn configure_overlay_panel(window: &tauri::WebviewWindow) -> Result<(), Stri
 
 #[cfg(target_os = "macos")]
 pub fn show_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
     use tauri_nspanel::ManagerExt as _;
 
     let panel = app
         .get_webview_panel("main")
         .map_err(|_| "overlay panel not found".to_string())?;
 
-    if let Some(window) = app.get_webview_window("main") {
-        window.show().ok();
-        window.set_always_on_top(true).ok();
-    }
-
+    // Panel APIs only — WebviewWindow::show/hide on an NSPanel can destroy
+    // the last window and quit the Accessory app.
     panel.show();
     Ok(())
 }
 
 #[cfg(target_os = "macos")]
 pub fn hide_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
-    use tauri::Manager;
     use tauri_nspanel::ManagerExt as _;
 
     if let Ok(panel) = app.get_webview_panel("main") {
         panel.order_out(None);
-    }
-
-    if let Some(window) = app.get_webview_window("main") {
-        window.hide().ok();
     }
 
     Ok(())
@@ -80,6 +72,8 @@ pub fn configure_overlay_panel(_window: &tauri::WebviewWindow) -> Result<(), Str
 
 #[cfg(not(target_os = "macos"))]
 pub fn show_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
     if let Some(window) = app.get_webview_window("main") {
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().ok();
@@ -89,6 +83,8 @@ pub fn show_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
 
 #[cfg(not(target_os = "macos"))]
 pub fn hide_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
     if let Some(window) = app.get_webview_window("main") {
         window.hide().map_err(|e| e.to_string())?;
     }
@@ -97,6 +93,8 @@ pub fn hide_overlay_panel(app: &tauri::AppHandle) -> Result<(), String> {
 
 #[cfg(not(target_os = "macos"))]
 pub fn overlay_panel_visible(app: &tauri::AppHandle) -> bool {
+    use tauri::Manager;
+
     app.get_webview_window("main")
         .and_then(|w| w.is_visible().ok())
         .unwrap_or(false)

@@ -1,5 +1,6 @@
 pub mod capture;
 pub mod pipeline;
+pub mod resample;
 pub mod speechmatics;
 pub mod vad;
 

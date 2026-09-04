@@ -20,9 +20,10 @@ tauri-build = { version = "2", features = [] }
 aniki-audio-core = { path = "../../../crates/audio-core" }
 aniki-stealth-window = { path = "../../../crates/stealth-window" }
 aniki-domain = { path = "../../../crates/domain" }
-tauri = { version = "2", features = ["macos-private-api"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-shell = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2"
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
@@ -35,6 +36,10 @@ raw-window-handle = "0.6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
+cocoa = "0.26"
+objc = "0.2"
+xcap = "0.7"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [features]
 default = ["custom-protocol"]

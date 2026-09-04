@@ -4,5 +4,7 @@
 <dict>
   <key>NSMicrophoneUsageDescription</key>
   <string>Aniki needs microphone access to capture your side of the interview for live transcription and coaching.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Aniki captures system audio (the interviewer) and optional screen text for coding interviews. Grant Screen Recording so the interviewer channel can be transcribed separately from your microphone.</string>
 </dict>
 </plist>

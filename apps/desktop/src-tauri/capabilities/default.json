@@ -18,6 +18,8 @@
     "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-current-monitor",
     "core:window:allow-is-visible",
+    "core:tray:default",
+    "window-state:default",
     "shell:allow-open",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister"

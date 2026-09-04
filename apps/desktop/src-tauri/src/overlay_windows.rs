@@ -1,6 +1,5 @@
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-#[cfg(target_os = "macos")]
 use crate::macos_overlay;
 
 pub fn configure_overlay_window(window: &WebviewWindow) -> Result<(), String> {
@@ -32,6 +31,10 @@ pub fn hide_all_overlays(app: &AppHandle) -> Result<(), String> {
 }
 
 pub fn show_all_overlays(app: &AppHandle) -> Result<(), String> {
+    let collapse = app.state::<crate::collapse::CollapseState>();
+    if crate::collapse::is_collapsed(&collapse)? {
+        crate::collapse::expand_overlay(app, &collapse)?;
+    }
     let _ = crate::commands::set_click_through_for_app(app, false);
     macos_overlay::show_overlay_panel(app)
 }

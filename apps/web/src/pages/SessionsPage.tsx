@@ -196,6 +196,19 @@ export function SessionsPage() {
             Enable screen OCR (coding interviews)
           </label>
 
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">Connect the desktop overlay</p>
+              <p className="text-xs text-muted-foreground">
+                Paste this into the desktop app under <strong>Access token</strong>. The magic link
+                itself is single-use and cannot be reused there.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => copyText("token", accessToken)}>
+              {copied === "token" ? "Copied!" : "Copy access token"}
+            </Button>
+          </div>
+
           {!activeSessionId ? (
             <Button onClick={startSession} disabled={starting || (user?.credits ?? 0) < 0.5}>
               {starting ? "Starting…" : "Start session"}
@@ -209,29 +222,17 @@ export function SessionsPage() {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Open the desktop app and paste your access token to connect the overlay to this
-                session.
+                This session is running. The desktop overlay can create its own session, or you can
+                reference this one by ID.
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyText("token", accessToken)}
-                >
-                  {copied === "token" ? "Copied!" : "Copy access token"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyText("id", activeSessionId)}
-                >
-                  {copied === "id" ? "Copied!" : "Copy session ID"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Desktop: run <code className="rounded bg-secondary px-1">pnpm dev:desktop</code> from
-                the repo root, paste the token, and click Start session in the overlay.
-              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => copyText("id", activeSessionId)}
+              >
+                {copied === "id" ? "Copied!" : "Copy session ID"}
+              </Button>
             </div>
           )}
         </CardContent>

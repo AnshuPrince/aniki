@@ -42,7 +42,22 @@ impl DualCapture {
             return Err("already running".to_string());
         }
         self.mic = Some(MicCapture::start()?);
-        self.system = Some(SystemCapture::start()?);
+        self.system = Some(match SystemCapture::start() {
+            Ok(capture) => {
+                if capture.is_capturing() {
+                    tracing::info!("System audio (interviewer) channel is live");
+                } else {
+                    tracing::warn!(
+                        "System audio not capturing yet — grant Screen Recording (macOS) or check WASAPI loopback (Windows)"
+                    );
+                }
+                capture
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "System audio unavailable; interviewer channel will be silent");
+                SystemCapture::silent()
+            }
+        });
         self.running = true;
         tracing::info!("Dual audio capture started");
         Ok(())
@@ -81,28 +96,26 @@ impl DualCapture {
         interleave_for_stt(&interviewer, &candidate)
     }
 
-    /// RMS level of the mic channel (0.0–1.0) for UI metering.
-    pub fn mic_level(&mut self) -> f32 {
+    /// RMS level of the mic channel (0.0–1.0) for UI metering. Does not consume samples.
+    pub fn mic_level(&self) -> f32 {
         if !self.running {
             return 0.0;
         }
-        let samples = self
-            .mic
-            .as_mut()
-            .map(|m| m.drain_mono_16k(false))
-            .unwrap_or_default();
-        if samples.is_empty() {
+        self.mic.as_ref().map(|m| m.level()).unwrap_or(0.0)
+    }
+
+    pub fn system_level(&self) -> f32 {
+        if !self.running {
             return 0.0;
         }
-        let energy: f64 = samples
-            .iter()
-            .map(|&s| {
-                let n = s as f64 / i16::MAX as f64;
-                n * n
-            })
-            .sum::<f64>()
-            / samples.len() as f64;
-        (energy.sqrt() as f32).min(1.0)
+        self.system.as_ref().map(|s| s.level()).unwrap_or(0.0)
+    }
+
+    pub fn system_capturing(&self) -> bool {
+        self.system
+            .as_ref()
+            .map(|s| s.is_capturing())
+            .unwrap_or(false)
     }
 
     pub fn config(&self) -> &PipelineConfig {
