@@ -53,9 +53,21 @@ Web/desktop use `VITE_API_URL=http://localhost:8080` (default).
 ### Auth flow (dev)
 
 1. Open http://localhost:3000 and sign in with email
-2. Check API logs for the magic link URL (email not sent in dev)
-3. Copy the access token from browser localStorage (`aniki_access_token`)
-4. Paste into the desktop overlay to start a session
+2. Check API logs for the magic link URL (email not sent in dev) and open it
+3. On the **Sessions** page, click **Copy access token**
+4. In the desktop overlay, choose **Access token** and paste it
+
+The magic-link token is single-use: once the browser verifies it, the desktop cannot reuse it. The
+overlay's **Magic link** tab only works if you copy the `token=` value from the logs without opening
+the link first.
+
+### Desktop (macOS)
+
+- There is no Dock icon. Use the **menu bar tray**: Show overlay, Toggle click-through, Quit Aniki.
+- Grant **Microphone** and **Screen Recording** (interviewer system audio + OCR) in System Settings → Privacy & Security.
+- Overlay hotkeys: `⌘⇧H` collapse to the pebble icon / expand, `⌘⇧C` click-through.
+- **Collapse** shrinks the overlay to a ~1cm circular icon that stays on screen; click it to expand.
+  **Stealth hide** (red ×) removes it entirely — restore from the tray.
 
 ## Docker (full stack)
 
