@@ -25,8 +25,7 @@ export function shouldTriggerAnswer(
   speaker: string,
   text: string,
   isFinal: boolean,
-  lastHash: string | null,
-  now = Date.now()
+  lastHash: string | null
 ): { trigger: boolean; hash: string | null } {
   if (!isFinal || speaker !== "interviewer") {
     return { trigger: false, hash: lastHash };
