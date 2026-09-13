@@ -126,4 +126,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Without this the action infers pnpm from the root lockfile and
+          # `pnpm add wrangler` is refused at the workspace root.
+          packageManager: npm
           command: pages deploy apps/web/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=master --commit-hash=${{ steps.sha.outputs.sha }}
