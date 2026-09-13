@@ -25,7 +25,7 @@ created: 2026-09-12
 ## Notes
 Do not add gp-nova shared workflows. R2 env is documented, not required for first Pages/Fly deploy.
 
-Implemented: `deploy.yml` after green CI on `main`; CORS from `APP_URL` + desktop locals + `CORS_ORIGINS`; idempotent `001_init.sql` so Neon migrate can re-run.
+Implemented: `deploy.yml` after green CI on `master`; CORS from `APP_URL` + desktop locals + `CORS_ORIGINS`; idempotent `001_init.sql` so Neon migrate can re-run.
 
 ## Gate
 Human must say continue/chain before Build implements workflows.
