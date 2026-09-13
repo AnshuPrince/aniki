@@ -6,3 +6,4 @@ pub mod notes;
 pub mod rag;
 pub mod resume_processor;
 pub mod speechmatics;
+pub mod upstream;
