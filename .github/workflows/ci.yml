@@ -47,6 +47,8 @@ jobs:
       DATABASE_URL: postgres://aniki:aniki@localhost:5432/aniki
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret
+      # Desktop overlay + cpal/ALSA stay on the macOS/Windows Tauri jobs.
+      CARGO_LINUX_EXCLUDES: --exclude aniki-desktop --exclude aniki-audio-core
     steps:
       - uses: actions/checkout@v4
 
@@ -64,13 +66,13 @@ jobs:
           PGPASSWORD=aniki psql -v ON_ERROR_STOP=1 -h localhost -U aniki -d aniki -f apps/api/migrations/003_google_sub.sql
 
       - name: cargo check
-        run: cargo check --workspace --all-targets --exclude aniki-desktop
+        run: cargo check --workspace --all-targets ${{ env.CARGO_LINUX_EXCLUDES }}
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets --exclude aniki-desktop -- -D warnings
+        run: cargo clippy --workspace --all-targets ${{ env.CARGO_LINUX_EXCLUDES }} -- -D warnings
 
       - name: cargo test
-        run: cargo test --workspace --exclude aniki-desktop
+        run: cargo test --workspace ${{ env.CARGO_LINUX_EXCLUDES }}
 
   frontend:
     name: Frontend checks

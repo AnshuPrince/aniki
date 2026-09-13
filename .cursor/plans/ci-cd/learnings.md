@@ -17,5 +17,5 @@
 
 - `pnpm/action-setup@v4` cannot set `version: 9` when `package.json` has `packageManager: pnpm@9.15.0`; omit `version` and let Corepack read the pin.
 - Workspace `clippy -D warnings` excludes `aniki-desktop` (cocoa/objc `msg_send!` unexpected_cfgs + deprecated). Tauri job still compiles the overlay.
-- Linux Rust job must `--exclude aniki-desktop` on check/test too: workspace check pulls GTK/`glib-sys` and ubuntu has no `glib-2.0`. Overlay belongs on the macOS/Windows Tauri jobs, not `pnpm --filter @aniki/desktop build` on ubuntu.
+- Linux Rust job must `--exclude aniki-desktop --exclude aniki-audio-core` on check/clippy/test: desktop pulls GTK; audio-core pulls `cpal`/`alsa-sys` and ubuntu has no `alsa`. Overlay + capture belong on the macOS/Windows Tauri jobs.
 
