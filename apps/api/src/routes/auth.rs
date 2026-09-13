@@ -1,7 +1,10 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
-use aniki_domain::{MagicLinkRequest, MagicLinkResponse, UserProfile, VerifyTokenRequest, AuthResponse};
+use aniki_domain::{
+    AuthResponse, GoogleOAuthCallbackRequest, GoogleOAuthStartResponse, MagicLinkRequest,
+    MagicLinkResponse, UserProfile, VerifyTokenRequest,
+};
 
 use crate::services::auth;
 use crate::state::AppState;
@@ -42,4 +45,33 @@ pub async fn me(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(user.into()))
+}
+
+pub async fn google_oauth_start(
+    State(state): State<AppState>,
+) -> Result<Json<GoogleOAuthStartResponse>, StatusCode> {
+    let mut redis = state.redis.clone();
+    auth::start_google_oauth(&mut redis, &state.config)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            if !matches!(e, auth::OauthError::Unconfigured) {
+                tracing::warn!(error = ?e, "google oauth start failed");
+            }
+            e.status()
+        })
+}
+
+pub async fn google_oauth_callback(
+    State(state): State<AppState>,
+    Json(req): Json<GoogleOAuthCallbackRequest>,
+) -> Result<Json<AuthResponse>, StatusCode> {
+    let mut redis = state.redis.clone();
+    auth::finish_google_oauth(&state.db, &mut redis, &state.config, &req)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            tracing::warn!(error = ?e, "google oauth callback failed");
+            e.status()
+        })
 }

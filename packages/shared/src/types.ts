@@ -16,6 +16,10 @@ export interface MagicLinkResponse {
   message: string;
 }
 
+export interface GoogleOAuthStartResponse {
+  authorization_url: string;
+}
+
 export type ResumeStatus = "pending" | "processing" | "ready" | "failed";
 
 export interface Resume {
@@ -64,6 +68,12 @@ export interface CreateSessionResponse {
   stt_jwt: string;
   stt_endpoint: string;
   stt_expires_at: string;
+}
+
+export interface AnswerRequest {
+  question: string;
+  transcript_context?: string;
+  screen_ocr?: string;
 }
 
 export interface SttJwtResponse {

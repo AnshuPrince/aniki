@@ -4,6 +4,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   CreditsResponse,
+  GoogleOAuthStartResponse,
   HealthResponse,
   MagicLinkResponse,
   ResumeListResponse,
@@ -86,6 +87,19 @@ export class AnikiClient {
     return this.request<UserProfile>("/auth/me");
   }
 
+  async oauthGoogleStart(): Promise<GoogleOAuthStartResponse> {
+    return this.request<GoogleOAuthStartResponse>("/auth/oauth/google/start");
+  }
+
+  async oauthGoogleCallback(code: string, state: string): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>("/auth/oauth/google/callback", {
+      method: "POST",
+      body: JSON.stringify({ code, state }),
+    });
+    this.setToken(response.access_token);
+    return response;
+  }
+
   async listResumes(): Promise<ResumeListResponse> {
     return this.request<ResumeListResponse>("/resumes");
   }
@@ -139,7 +153,8 @@ export class AnikiClient {
   async *streamAnswer(
     sessionId: string,
     question: string,
-    transcriptContext?: string
+    transcriptContext?: string,
+    screenOcr?: string
   ): AsyncGenerator<string> {
     const token = this.getToken();
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/answer`, {
@@ -151,6 +166,7 @@ export class AnikiClient {
       body: JSON.stringify({
         question,
         transcript_context: transcriptContext,
+        screen_ocr: screenOcr,
       }),
     });
 

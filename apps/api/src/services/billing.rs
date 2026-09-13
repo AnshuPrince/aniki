@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use aniki_domain::{CreditLedgerEntry, CreditsResponse};
@@ -32,25 +32,22 @@ pub async fn get_credits(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Credits
 }
 
 pub async fn deduct_credits(
-    pool: &PgPool,
+    tx: &mut Transaction<'_, Postgres>,
     user_id: Uuid,
     amount: f64,
     reason: &str,
     session_id: Option<Uuid>,
 ) -> anyhow::Result<bool> {
-    let mut tx = pool.begin().await?;
-
-    let balance = db::credits_balance_for_update(&mut tx, user_id).await?;
+    let balance = db::credits_balance_for_update(tx, user_id).await?;
 
     if balance < amount {
-        tx.rollback().await?;
         return Ok(false);
     }
 
     sqlx::query("UPDATE users SET credits = credits - $1, updated_at = NOW() WHERE id = $2")
         .bind(amount)
         .bind(user_id)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
 
     sqlx::query(
@@ -60,9 +57,8 @@ pub async fn deduct_credits(
     .bind(-amount)
     .bind(reason)
     .bind(session_id)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await?;
 
-    tx.commit().await?;
     Ok(true)
 }

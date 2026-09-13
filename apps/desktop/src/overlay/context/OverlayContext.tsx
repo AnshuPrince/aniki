@@ -40,6 +40,7 @@ interface OverlayContextValue {
   stealthWarning: string | null;
   starting: boolean;
   startSession: (params: StartSessionParams) => Promise<void>;
+  joinSession: (sessionId: string) => Promise<void>;
   endSession: () => Promise<void>;
   streamAnswer: (question: string, withOcr?: boolean) => Promise<void>;
   lastInterviewerQuestion: string;
@@ -154,43 +155,18 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
           .map((t) => `[${t.speaker}] ${t.text}`)
           .join("\n");
 
-        const url = new URL(
-          `${import.meta.env.VITE_API_URL ?? "http://localhost:8080"}/sessions/${session.session.id}/answer`,
-        );
-        if (ocrContext) url.searchParams.set("screen_ocr", ocrContext);
-
-        const token = localStorage.getItem(TOKEN_KEY);
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ question, transcript_context: transcriptContext }),
-        });
-
-        if (!response.ok || !response.body) throw new Error("Answer stream failed");
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const chunk = line.slice(6);
-              if (chunk) {
-                setAnswer((prev) => {
-                  const next = prev + chunk;
-                  void emit("answer-update", next);
-                  return next;
-                });
-              }
-            }
+        for await (const chunk of api.streamAnswer(
+          session.session.id,
+          question,
+          transcriptContext,
+          ocrContext,
+        )) {
+          if (chunk) {
+            setAnswer((prev) => {
+              const next = prev + chunk;
+              void emit("answer-update", next);
+              return next;
+            });
           }
         }
       } catch (e) {
@@ -278,6 +254,38 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const beginLiveSession = useCallback(async (response: CreateSessionResponse) => {
+    setSession(response);
+    setTranscript([]);
+    setAnswer("");
+    finalSegments.current = [];
+    lastQuestionHash.current = null;
+
+    const audioStatus = await invoke<{
+      mic_active: boolean;
+      dev_stt_mode: boolean;
+    }>("start_audio_session", {
+      sttJwt: response.stt_jwt,
+      sttEndpoint: response.stt_endpoint,
+    });
+
+    setMicActive(audioStatus.mic_active);
+    setDevSttMode(audioStatus.dev_stt_mode);
+
+    if (refreshTimer.current) clearInterval(refreshTimer.current);
+    refreshTimer.current = setInterval(async () => {
+      try {
+        const refreshed = await api.refreshSttJwt(response.session.id);
+        await invoke("refresh_stt_jwt", { jwt: refreshed.jwt });
+      } catch (e) {
+        console.error("STT JWT refresh failed", e);
+      }
+    }, STT_JWT_REFRESH_INTERVAL_MS);
+
+    setScreen("live");
+    await setLiveSize();
+  }, []);
+
   const startSession = useCallback(
     async (params: StartSessionParams) => {
       setStarting(true);
@@ -288,40 +296,34 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
           enable_screen_ocr: params.enableOcr,
           extra_context: params.extraContext || undefined,
         });
-
-        setSession(response);
-        setTranscript([]);
-        setAnswer("");
-        finalSegments.current = [];
-        lastQuestionHash.current = null;
-
-        const audioStatus = await invoke<{
-          mic_active: boolean;
-          dev_stt_mode: boolean;
-        }>("start_audio_session", {
-          sttJwt: response.stt_jwt,
-          sttEndpoint: response.stt_endpoint,
-        });
-
-        setMicActive(audioStatus.mic_active);
-        setDevSttMode(audioStatus.dev_stt_mode);
-
-        refreshTimer.current = setInterval(async () => {
-          try {
-            const refreshed = await api.refreshSttJwt(response.session.id);
-            await invoke("refresh_stt_jwt", { jwt: refreshed.jwt });
-          } catch (e) {
-            console.error("STT JWT refresh failed", e);
-          }
-        }, STT_JWT_REFRESH_INTERVAL_MS);
-
-        setScreen("live");
-        await setLiveSize();
+        await beginLiveSession(response);
       } finally {
         setStarting(false);
       }
     },
-    [],
+    [beginLiveSession],
+  );
+
+  const joinSession = useCallback(
+    async (sessionId: string) => {
+      setStarting(true);
+      try {
+        const detail = await api.getSession(sessionId.trim());
+        if (detail.session.status !== "active") {
+          throw new Error("Only an active session can be joined.");
+        }
+        const stt = await api.refreshSttJwt(detail.session.id);
+        await beginLiveSession({
+          session: detail.session,
+          stt_jwt: stt.jwt,
+          stt_endpoint: stt.endpoint,
+          stt_expires_at: stt.expires_at,
+        });
+      } finally {
+        setStarting(false);
+      }
+    },
+    [beginLiveSession],
   );
 
   const endSession = useCallback(async () => {
@@ -383,6 +385,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
         stealthWarning,
         starting,
         startSession,
+        joinSession,
         endSession,
         streamAnswer,
         lastInterviewerQuestion,

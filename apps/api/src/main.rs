@@ -10,7 +10,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::http::{header, Method};
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -47,12 +47,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let cors = CorsLayer::new()
-        .allow_origin([
-            config.app_url.parse().unwrap(),
-            "http://localhost:3000".parse().unwrap(),
-            "http://localhost:1420".parse().unwrap(),
-            "tauri://localhost".parse().unwrap(),
-        ])
+        .allow_origin(AllowOrigin::list(config.cors_origin_headers()?))
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
         .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT]);
 

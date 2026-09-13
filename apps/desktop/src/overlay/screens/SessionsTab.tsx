@@ -4,6 +4,7 @@ import type { Session, SessionDetailResponse } from "@aniki/shared";
 import { Button } from "@aniki/ui";
 import { api } from "../../lib/api";
 import { WEB_URL } from "../constants";
+import { useOverlay } from "../context/OverlayContext";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -28,10 +29,13 @@ function sessionTitle(session: Session) {
 }
 
 export function SessionsTab() {
+  const { joinSession, starting } = useOverlay();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [search, setSearch] = useState("");
+  const [joinId, setJoinId] = useState("");
   const [selected, setSelected] = useState<SessionDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const data = await api.listSessions();
@@ -89,6 +93,29 @@ export function SessionsTab() {
         <span className="absolute right-3 top-2.5 text-muted-foreground">⌕</span>
       </div>
 
+      <div className="mb-3 flex gap-2">
+        <input
+          value={joinId}
+          onChange={(e) => setJoinId(e.target.value)}
+          placeholder="Paste active session ID"
+          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs"
+        />
+        <Button
+          size="sm"
+          disabled={starting || !joinId.trim()}
+          onClick={() => {
+            setError(null);
+            void joinSession(joinId)
+              .then(() => setJoinId(""))
+              .catch((e) =>
+                setError(e instanceof Error ? e.message : "Failed to join session"),
+              );
+          }}
+        >
+          Join
+        </Button>
+      </div>
+
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
         {loading && <p className="text-xs text-muted-foreground">Loading…</p>}
         {!loading && filtered.length === 0 && (
@@ -114,23 +141,42 @@ export function SessionsTab() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground">{sessionDuration(s)}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs"
-                onClick={() => api.getSession(s.id).then(setSelected)}
-              >
-                View Transcript
-              </Button>
+              <div className="flex gap-1">
+                {s.status === "active" && (
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={starting}
+                    onClick={() => {
+                      setError(null);
+                      void joinSession(s.id).catch((e) =>
+                        setError(e instanceof Error ? e.message : "Failed to join session"),
+                      );
+                    }}
+                  >
+                    {starting ? "Joining…" : "Join"}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => api.getSession(s.id).then(setSelected)}
+                >
+                  View
+                </Button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+
       <Button
         variant="outline"
         className="mt-3 w-full rounded-xl"
-        onClick={() => void open(WEB_URL)}
+        onClick={() => void open(`${WEB_URL}/app/sessions`)}
       >
         View in Dashboard ↗
       </Button>

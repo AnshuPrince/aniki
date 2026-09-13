@@ -52,6 +52,7 @@ pub async fn run_migrations(pool: &DbPool) -> anyhow::Result<()> {
     for migration in [
         include_str!("../migrations/001_init.sql"),
         include_str!("../migrations/002_indexes.sql"),
+        include_str!("../migrations/003_google_sub.sql"),
     ] {
         for statement in migration.split(';') {
             let trimmed = statement.trim();

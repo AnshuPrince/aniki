@@ -13,8 +13,8 @@ import { api, TOKEN_KEY } from "./api";
 interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
-  login: (email: string) => Promise<void>;
   verify: (token: string) => Promise<void>;
+  completeGoogle: (code: string, state: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -44,12 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshUser]);
 
-  const login = useCallback(async (email: string) => {
-    await api.requestMagicLink(email);
-  }, []);
-
   const verify = useCallback(async (token: string) => {
     const response = await api.verifyToken(token);
+    setUser(response.user);
+  }, []);
+
+  const completeGoogle = useCallback(async (code: string, state: string) => {
+    const response = await api.oauthGoogleCallback(code, state);
     setUser(response.user);
   }, []);
 
@@ -59,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, verify, logout, refreshUser }),
-    [user, loading, login, verify, logout, refreshUser]
+    () => ({ user, loading, verify, completeGoogle, logout, refreshUser }),
+    [user, loading, verify, completeGoogle, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

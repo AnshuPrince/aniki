@@ -65,7 +65,8 @@ async fn generate_via_llm(
                 "model": config.confirm_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
-                "max_tokens": 800,
+                "max_completion_tokens": 1200,
+                "reasoning_effort": "low",
             }))
             .send()
             .await?

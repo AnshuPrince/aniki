@@ -18,6 +18,17 @@ pub struct VerifyTokenRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoogleOAuthStartResponse {
+    pub authorization_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoogleOAuthCallbackRequest {
+    pub code: String,
+    pub state: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
     pub access_token: String,
     pub token_type: String,

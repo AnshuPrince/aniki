@@ -3,8 +3,8 @@ use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use crate::config::Config;
-use crate::services::{embeddings, resume_processor};
 use crate::redis::{cache_get, cache_set, RedisPool};
+use crate::services::{embeddings, resume_processor};
 
 pub async fn process_resume(
     pool: &PgPool,
@@ -18,17 +18,31 @@ pub async fn process_resume(
         .execute(pool)
         .await?;
 
-    let text = resume_processor::extract_text_from_bytes(filename, content)?;
-    let chunks = resume_processor::chunk_text(&text);
-
-    if chunks.is_empty() {
+    if let Err(error) = process_resume_inner(pool, config, resume_id, filename, content).await {
         sqlx::query(
-            "UPDATE resumes SET status = 'failed', updated_at = NOW() WHERE id = $1",
+            "UPDATE resumes SET status = 'failed', chunk_count = 0, updated_at = NOW() WHERE id = $1",
         )
         .bind(resume_id)
         .execute(pool)
         .await?;
-        return Ok(());
+        return Err(error);
+    }
+
+    Ok(())
+}
+
+async fn process_resume_inner(
+    pool: &PgPool,
+    config: &Config,
+    resume_id: Uuid,
+    filename: &str,
+    content: &[u8],
+) -> anyhow::Result<()> {
+    let text = resume_processor::extract_text_from_bytes(filename, content)?;
+    let chunks = resume_processor::chunk_text(&text);
+
+    if chunks.is_empty() {
+        anyhow::bail!("resume contains no extractable text");
     }
 
     sqlx::query("DELETE FROM resume_chunks WHERE resume_id = $1")
@@ -37,10 +51,9 @@ pub async fn process_resume(
         .await?;
 
     for (index, chunk) in chunks.iter().enumerate() {
-        let embedding = if config.openai_api_key.is_some() {
-            embeddings::embed_text(config, chunk).await?
-        } else {
-            vec![0.0_f32; 1536]
+        let embedding = match &config.openai_api_key {
+            Some(_) => Some(Vector::from(embeddings::embed_text(config, chunk).await?)),
+            None => None,
         };
 
         sqlx::query(
@@ -50,7 +63,7 @@ pub async fn process_resume(
         .bind(resume_id)
         .bind(index as i32)
         .bind(chunk)
-        .bind(Vector::from(embedding))
+        .bind(embedding)
         .execute(pool)
         .await?;
     }
@@ -104,7 +117,6 @@ pub async fn search_resume_context(
 pub async fn prewarm_session_context(
     pool: &PgPool,
     redis: &mut RedisPool,
-    config: &Config,
     session_id: Uuid,
     resume_id: Option<Uuid>,
     extra_context: Option<&str>,

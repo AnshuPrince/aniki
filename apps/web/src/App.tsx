@@ -7,8 +7,11 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ResumesPage } from "./pages/ResumesPage";
 import { SessionsPage } from "./pages/SessionsPage";
 import { BillingPage } from "./pages/BillingPage";
+import { LandingPage } from "./pages/LandingPage";
+import { OAuthCallbackPage } from "./pages/OAuthCallbackPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -21,13 +24,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LandingRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/app" replace />;
+  return <LandingPage />;
+}
+
 export function App() {
   return (
     <Routes>
+      <Route path="/" element={<LandingRoute />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/auth/verify" element={<VerifyPage />} />
+      <Route path="/auth/oauth/callback" element={<OAuthCallbackPage />} />
       <Route
-        path="/"
+        path="/app"
         element={
           <ProtectedRoute>
             <DashboardLayout />
@@ -39,6 +52,10 @@ export function App() {
         <Route path="sessions" element={<SessionsPage />} />
         <Route path="billing" element={<BillingPage />} />
       </Route>
+      <Route path="/resumes" element={<Navigate to="/app/resumes" replace />} />
+      <Route path="/sessions" element={<Navigate to="/app/sessions" replace />} />
+      <Route path="/billing" element={<Navigate to="/app/billing" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

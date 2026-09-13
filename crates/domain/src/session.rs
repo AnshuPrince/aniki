@@ -57,6 +57,7 @@ pub struct CreateSessionResponse {
 pub struct AnswerRequest {
     pub question: String,
     pub transcript_context: Option<String>,
+    pub screen_ocr: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

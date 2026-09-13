@@ -1,13 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Button } from "@aniki/ui";
+import { Button, cn } from "@aniki/ui";
 import { useAuth } from "../lib/auth";
-import { cn } from "@aniki/ui";
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
-  { to: "/resumes", label: "Resumes" },
-  { to: "/sessions", label: "Sessions" },
-  { to: "/billing", label: "Billing" },
+  { to: "/app", label: "Dashboard" },
+  { to: "/app/resumes", label: "Resumes" },
+  { to: "/app/sessions", label: "Sessions" },
+  { to: "/app/billing", label: "Billing" },
 ];
 
 export function DashboardLayout() {
@@ -24,7 +23,7 @@ export function DashboardLayout() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === "/"}
+                  end={item.to === "/app"}
                   className={({ isActive }) =>
                     cn(
                       "rounded-md px-3 py-2 text-sm font-medium transition-colors",

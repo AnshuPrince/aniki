@@ -1,6 +1,6 @@
 # Aniki — Implementation Plan
 
-Last updated: 2026-09-04
+Last updated: 2026-09-12
 
 This document tracks milestone progress and what to pick up next. Use it as the handoff artifact when resuming work.
 
@@ -22,7 +22,8 @@ Cloud-first interview assistant: web dashboard for sessions/resumes/billing, des
 ## Desktop overlay (macOS)
 
 - **All Spaces / fullscreen apps**: `NSPanel` with `CanJoinAllSpaces` + `FullScreenAuxiliary`.
-- **Hide without quit**: Hide / `⌘⇧H` uses `order_out` only; process stays alive.
+- **Collapse**: `⌘⇧H` resizes to the pebble icon (process stays visible).
+- **Stealth hide**: red × / menu **Stealth hide** uses `order_out`; restore from the tray. Process stays alive.
 - **Quit**: menu bar tray → **Quit Aniki** (Accessory app has no Dock icon).
 - **Click-through**: `⌘⇧C` or tray item.
 - **System audio**: ScreenCaptureKit loopback on the interviewer channel. Requires Screen Recording permission.
@@ -31,7 +32,7 @@ Cloud-first interview assistant: web dashboard for sessions/resumes/billing, des
 
 | Shortcut | Action |
 |----------|--------|
-| `⌘⇧H` | Hide overlay / show overlay (on top) |
+| `⌘⇧H` | Collapse to pebble / expand |
 | `⌘⇧C` | Toggle click-through |
 
 ## Local dev quick start
@@ -48,6 +49,10 @@ pnpm dev:desktop                # terminal 3 (full restart after Rust changes)
 API smoke test: `./scripts/smoke-test.sh`
 
 Auth: magic link URL in API logs → web Sessions page → copy token + session ID → desktop overlay.
+
+## Agent workflow
+
+Product work runs **Discover → Plan → Solve → Build → Operate**. Skills: `.cursor/skills/aniki-*/`. Invoke via [`AGENTS.md`](../AGENTS.md). Do not use GP FSA / Jira / SAM / MFE.
 
 ## Next implementation priorities
 
@@ -91,6 +96,7 @@ Auth: magic link URL in API logs → web Sessions page → copy token + session 
 
 ## Suggested next session
 
-1. Dry-run a live session with Screen Recording enabled: interviewer on system audio, candidate on mic.
-2. Confirm tray Quit actually exits (ALLOW_EXIT flag).
-3. Windows WASAPI + overlay smoke test.
+1. Run `aniki-discover` for slug `rag-answer` (per-question RAG) then chain Plan → Solve → Build.
+2. Dry-run a live session with Screen Recording enabled: interviewer on system audio, candidate on mic.
+3. Confirm tray Quit actually exits (ALLOW_EXIT flag).
+4. Windows WASAPI + overlay smoke test.

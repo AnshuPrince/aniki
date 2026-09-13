@@ -54,7 +54,7 @@ export function ResumesPage() {
           <Input
             ref={fileRef}
             type="file"
-            accept=".pdf,.doc,.docx,.txt"
+            accept=".pdf,.docx,.txt"
             className="hidden"
             onChange={handleUpload}
           />
