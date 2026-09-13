@@ -1,0 +1,131 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-api:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    name: Deploy API (Fly)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Resolve SHA
+        id: sha
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+
+      - name: Migrate Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "DATABASE_URL is not set on the production environment. Skip is not allowed."
+            exit 1
+          fi
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/001_init.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/002_indexes.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/api/migrations/003_google_sub.sql
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Fly app
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy . --config apps/api/fly.toml --dockerfile apps/api/Dockerfile --remote-only --ha=false
+
+      - name: Health check
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_URL:-}" ]; then
+            echo "Set repository/environment variable API_URL (Fly HTTPS origin, no trailing slash)."
+            exit 1
+          fi
+          body="$(curl -fsS --retry 8 --retry-all-errors --retry-delay 5 "${API_URL}/health")"
+          echo "$body" | grep -q '"database":"up"'
+          echo "$body" | grep -q '"status":"ok"'
+
+  deploy-web:
+    needs: deploy-api
+    name: Deploy web (Pages)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Resolve SHA
+        id: sha
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install and build web
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VITE_API_URL:-}" ]; then
+            echo "Set repository/environment variable API_URL for the Pages build."
+            exit 1
+          fi
+          pnpm install --frozen-lockfile
+          pnpm --filter @aniki/web build
+
+      - name: Require Pages project name
+        env:
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          if [ -z "${CLOUDFLARE_PAGES_PROJECT:-}" ]; then
+            echo "Set GitHub variable CLOUDFLARE_PAGES_PROJECT on the production environment."
+            exit 1
+          fi
+
+      - name: Publish Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/web/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main --commit-hash=${{ steps.sha.outputs.sha }}

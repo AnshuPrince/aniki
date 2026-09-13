@@ -6,6 +6,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -64,7 +71,9 @@ jobs:
       - name: Run migrations
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          PGPASSWORD=aniki psql -h localhost -U aniki -d aniki -f apps/api/migrations/001_init.sql
+          PGPASSWORD=aniki psql -v ON_ERROR_STOP=1 -h localhost -U aniki -d aniki -f apps/api/migrations/001_init.sql
+          PGPASSWORD=aniki psql -v ON_ERROR_STOP=1 -h localhost -U aniki -d aniki -f apps/api/migrations/002_indexes.sql
+          PGPASSWORD=aniki psql -v ON_ERROR_STOP=1 -h localhost -U aniki -d aniki -f apps/api/migrations/003_google_sub.sql
 
       - name: cargo check
         run: |

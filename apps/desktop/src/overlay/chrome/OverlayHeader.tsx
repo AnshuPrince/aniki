@@ -72,7 +72,7 @@ export function OverlayHeader({
         {showCredits && user && (
           <button
             type="button"
-            onClick={() => void open(`${WEB_URL}/billing`)}
+            onClick={() => void open(`${WEB_URL}/app/billing`)}
             className="ml-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-white/5"
           >
             {user.credits} credits
@@ -107,7 +107,7 @@ export function OverlayHeader({
                 type="button"
                 className="w-full px-3 py-2 text-left text-sm hover:bg-white/5"
                 onClick={() => {
-                  void open(WEB_URL);
+                  void open(`${WEB_URL}/app`);
                   setMenuOpen(false);
                 }}
               >

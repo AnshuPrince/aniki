@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::Json;
@@ -73,14 +73,13 @@ pub async fn append_transcript(
     axum::Extension(claims): axum::Extension<aniki_domain::SessionClaims>,
     Json(req): Json<AppendTranscriptRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = $1 AND user_id = $2)",
-    )
-    .bind(session_id)
-    .bind(claims.sub)
-    .fetch_one(&state.db)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions WHERE id = $1 AND user_id = $2)")
+            .bind(session_id)
+            .bind(claims.sub)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if !exists {
         return Err(StatusCode::NOT_FOUND);
@@ -128,20 +127,34 @@ pub async fn create_session(
 ) -> Result<Json<CreateSessionResponse>, StatusCode> {
     let credit_cost = state.config.session_credit_cost;
 
-    let balance = crate::db::credits_balance(&state.db, claims.sub)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    if balance < credit_cost {
-        return Err(StatusCode::PAYMENT_REQUIRED);
-    }
-
     let model = req.model.unwrap_or_default();
     let model_str = match model {
         LlmModel::Gpt41 => "gpt41",
         LlmModel::ClaudeSonnet => "claude_sonnet",
         LlmModel::Gpt41Mini => "gpt41_mini",
     };
+
+    let mut tx = state
+        .db
+        .begin()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if let Some(resume_id) = req.resume_id {
+        let resume_is_usable: bool = sqlx::query_scalar(
+            "SELECT EXISTS(
+                SELECT 1 FROM resumes
+                WHERE id = $1 AND user_id = $2 AND status = 'ready'
+            )",
+        )
+        .bind(resume_id)
+        .bind(claims.sub)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        if !resume_is_usable {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
 
     let session_row = sqlx::query(
         "INSERT INTO sessions (user_id, resume_id, model, extra_context, enable_screen_ocr)
@@ -153,7 +166,7 @@ pub async fn create_session(
     .bind(model_str)
     .bind(&req.extra_context)
     .bind(req.enable_screen_ocr.unwrap_or(false))
-    .fetch_one(&state.db)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "create session failed");
@@ -162,8 +175,8 @@ pub async fn create_session(
 
     let session_id: Uuid = session_row.get("id");
 
-    billing::deduct_credits(
-        &state.db,
+    let deducted = billing::deduct_credits(
+        &mut tx,
         claims.sub,
         credit_cost,
         "session_start",
@@ -171,21 +184,28 @@ pub async fn create_session(
     )
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    if !deducted {
+        tx.rollback()
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        return Err(StatusCode::PAYMENT_REQUIRED);
+    }
+    tx.commit()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let mut redis = state.redis.clone();
-    rag::prewarm_session_context(
+    if let Err(e) = rag::prewarm_session_context(
         &state.db,
         &mut redis,
-        &state.config,
         session_id,
         req.resume_id,
         req.extra_context.as_deref(),
     )
     .await
-    .map_err(|e| {
-        tracing::error!(error = %e, "prewarm context failed");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    {
+        tracing::warn!(error = %e, %session_id, "prewarm context failed; answer will query Postgres");
+    }
 
     let stt = if state.config.speechmatics_api_key.is_some() {
         speechmatics::mint_stt_jwt(&state.config, session_id, None).map_err(|e| {
@@ -208,11 +228,11 @@ pub async fn answer_question(
     State(state): State<AppState>,
     Path(session_id): Path<Uuid>,
     axum::Extension(claims): axum::Extension<aniki_domain::SessionClaims>,
-    Query(params): Query<AnswerQuery>,
     Json(req): Json<AnswerRequest>,
 ) -> Result<Sse<impl stream::Stream<Item = Result<Event, Infallible>>>, StatusCode> {
     let row = sqlx::query(
-        "SELECT model, enable_screen_ocr FROM sessions WHERE id = $1 AND user_id = $2 AND status = 'active'",
+        "SELECT model, resume_id, extra_context
+         FROM sessions WHERE id = $1 AND user_id = $2 AND status = 'active'",
     )
     .bind(session_id)
     .bind(claims.sub)
@@ -228,12 +248,36 @@ pub async fn answer_question(
         _ => LlmModel::Gpt41,
     };
 
-    let mut redis = state.redis.clone();
-    let context = rag::get_session_context(&mut redis, session_id)
-        .await
-        .unwrap_or_default();
+    let screen_ocr = req.screen_ocr.as_deref().map(truncate_ocr);
+    let mut retrieval_query = req.question.clone();
+    if let Some(ocr) = screen_ocr.as_deref() {
+        retrieval_query.push('\n');
+        retrieval_query.push_str(ocr);
+    }
 
-    let screen_ocr = params.screen_ocr.as_deref();
+    let resume_id: Option<Uuid> = row.get("resume_id");
+    let extra_context: Option<String> = row.get("extra_context");
+    let mut context = if let Some(resume_id) = resume_id {
+        rag::search_resume_context(&state.db, &state.config, resume_id, &retrieval_query, 8)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, %session_id, "resume retrieval failed; using cached context");
+                Vec::new()
+            })
+    } else {
+        Vec::new()
+    };
+    if context.is_empty() {
+        let mut redis = state.redis.clone();
+        context = rag::get_session_context(&mut redis, session_id)
+            .await
+            .unwrap_or_default();
+    }
+    if let Some(extra) = extra_context.filter(|value| !value.is_empty()) {
+        if !context.iter().any(|item| item == &extra) {
+            context.push(extra);
+        }
+    }
 
     let llm_stream = llm::stream_answer(
         &state.config,
@@ -241,7 +285,7 @@ pub async fn answer_question(
         &context,
         &req.question,
         req.transcript_context.as_deref(),
-        screen_ocr,
+        screen_ocr.as_deref(),
     )
     .await
     .map_err(|e| {
@@ -249,28 +293,36 @@ pub async fn answer_question(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let stream = llm_stream.flat_map(|chunk| {
-        match chunk {
-            Ok(c) => {
-                let mut events = Vec::new();
-                if !c.text.is_empty() {
-                    events.push(Ok(Event::default().data(c.text)));
-                }
-                if c.done {
-                    events.push(Ok(Event::default().event("done").data("")));
-                }
-                stream::iter(events)
+    let stream = llm_stream.flat_map(|chunk| match chunk {
+        Ok(c) => {
+            let mut events = Vec::new();
+            if !c.text.is_empty() {
+                events.push(Ok(Event::default().data(c.text)));
             }
-            Err(e) => stream::iter(vec![Ok(Event::default().event("error").data(e.to_string()))]),
+            if c.done {
+                events.push(Ok(Event::default().event("done").data("")));
+            }
+            stream::iter(events)
         }
+        Err(e) => stream::iter(vec![Ok(Event::default()
+            .event("error")
+            .data(e.to_string()))]),
     });
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
-#[derive(Deserialize)]
-pub struct AnswerQuery {
-    pub screen_ocr: Option<String>,
+fn truncate_ocr(value: &str) -> String {
+    const MAX_OCR_CHARS: usize = 12_000;
+    if value.chars().count() <= MAX_OCR_CHARS {
+        return value.to_owned();
+    }
+    tracing::warn!(
+        original_chars = value.chars().count(),
+        max_chars = MAX_OCR_CHARS,
+        "screen OCR truncated"
+    );
+    value.chars().take(MAX_OCR_CHARS).collect()
 }
 
 pub async fn finalize_session(
@@ -328,5 +380,18 @@ fn row_to_session(row: &sqlx::postgres::PgRow) -> Session {
         enable_screen_ocr: row.get("enable_screen_ocr"),
         started_at: row.get("started_at"),
         ended_at: row.get("ended_at"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_ocr;
+
+    #[test]
+    fn ocr_limit_counts_unicode_characters_without_splitting_them() {
+        let input = "界".repeat(12_001);
+        let truncated = truncate_ocr(&input);
+        assert_eq!(truncated.chars().count(), 12_000);
+        assert!(truncated.is_char_boundary(truncated.len()));
     }
 }

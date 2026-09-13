@@ -17,7 +17,7 @@ export function VerifyPage() {
     }
 
     verify(token)
-      .then(() => navigate("/"))
+      .then(() => navigate("/app"))
       .catch((err) => setError(err instanceof Error ? err.message : "Verification failed"));
   }, [searchParams, verify, navigate]);
 

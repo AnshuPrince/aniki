@@ -18,14 +18,16 @@ import {
 import { api, TOKEN_KEY } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
-const MODEL_OPTIONS: { value: LlmModel; label: string }[] = [
-  { value: "gpt41", label: "GPT-4.1" },
-  { value: "claude_sonnet", label: "Claude Sonnet" },
-  { value: "gpt41_mini", label: "GPT-4.1 Mini" },
-];
+const CURRENT_MODEL: { value: LlmModel; label: string } = {
+  value: "gpt41",
+  label: "GPT-5.6 Luna",
+};
 
 function formatModel(model: LlmModel) {
-  return MODEL_OPTIONS.find((m) => m.value === model)?.label ?? model;
+  if (model === CURRENT_MODEL.value) return CURRENT_MODEL.label;
+  if (model === "claude_sonnet") return "Claude Sonnet";
+  if (model === "gpt41_mini") return "GPT-4.1 Mini";
+  return model;
 }
 
 export function SessionsPage() {
@@ -41,7 +43,7 @@ export function SessionsPage() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const [resumeId, setResumeId] = useState("");
-  const [model, setModel] = useState<LlmModel>("gpt41");
+  const model = CURRENT_MODEL.value;
   const [enableOcr, setEnableOcr] = useState(false);
 
   const loadSessions = useCallback(async () => {
@@ -171,18 +173,9 @@ export function SessionsPage() {
 
             <label className="block space-y-2 text-sm">
               <span className="font-medium">Answer model</span>
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value as LlmModel)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2"
-                disabled={!!activeSessionId}
-              >
-                {MODEL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full rounded-md border border-input bg-secondary/30 px-3 py-2">
+                {CURRENT_MODEL.label}
+              </div>
             </label>
           </div>
 

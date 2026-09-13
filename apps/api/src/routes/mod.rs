@@ -15,7 +15,9 @@ pub fn create_router(state: AppState) -> Router {
     let public = Router::new()
         .route("/health", get(health::health_check))
         .route("/auth/magic-link", post(auth::request_magic_link))
-        .route("/auth/verify", post(auth::verify_token));
+        .route("/auth/verify", post(auth::verify_token))
+        .route("/auth/oauth/google/start", get(auth::google_oauth_start))
+        .route("/auth/oauth/google/callback", post(auth::google_oauth_callback));
 
     let protected = Router::new()
         .route("/auth/me", get(auth::me))

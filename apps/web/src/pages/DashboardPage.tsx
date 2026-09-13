@@ -32,8 +32,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Run <code className="rounded bg-secondary px-1">pnpm tauri dev</code> in{" "}
-              <code className="rounded bg-secondary px-1">apps/desktop</code>
+              Open the Aniki desktop app when you are ready to join a session.
             </p>
           </CardContent>
         </Card>
@@ -47,7 +46,7 @@ export function DashboardPage() {
             <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
               <li>Upload your resume</li>
               <li>
-                <a href="/sessions" className="text-primary hover:underline">
+                <a href="/app/sessions" className="text-primary hover:underline">
                   Start a session
                 </a>{" "}
                 on the Sessions page

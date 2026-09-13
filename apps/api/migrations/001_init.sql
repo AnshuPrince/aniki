@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Users
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL UNIQUE,
     display_name TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE users (
 );
 
 -- Magic link tokens (short-lived)
-CREATE TABLE magic_link_tokens (
+CREATE TABLE IF NOT EXISTS magic_link_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     token_hash TEXT NOT NULL UNIQUE,
@@ -23,10 +23,10 @@ CREATE TABLE magic_link_tokens (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_magic_link_token_hash ON magic_link_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_magic_link_token_hash ON magic_link_tokens(token_hash);
 
 -- Resumes
-CREATE TABLE resumes (
+CREATE TABLE IF NOT EXISTS resumes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     filename TEXT NOT NULL,
@@ -37,10 +37,10 @@ CREATE TABLE resumes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_resumes_user_id ON resumes(user_id);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
 
 -- Resume chunks with embeddings (pgvector)
-CREATE TABLE resume_chunks (
+CREATE TABLE IF NOT EXISTS resume_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     resume_id UUID NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
     chunk_index INT NOT NULL,
@@ -49,10 +49,10 @@ CREATE TABLE resume_chunks (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_resume_chunks_resume_id ON resume_chunks(resume_id);
+CREATE INDEX IF NOT EXISTS idx_resume_chunks_resume_id ON resume_chunks(resume_id);
 
 -- Sessions
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     resume_id UUID REFERENCES resumes(id) ON DELETE SET NULL,
@@ -66,10 +66,10 @@ CREATE TABLE sessions (
     ended_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
 -- Credit ledger (immutable audit trail)
-CREATE TABLE credit_ledger (
+CREATE TABLE IF NOT EXISTS credit_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     delta DECIMAL(10, 2) NOT NULL,
@@ -78,10 +78,10 @@ CREATE TABLE credit_ledger (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_credit_ledger_user_id ON credit_ledger(user_id);
+CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_id ON credit_ledger(user_id);
 
 -- Billing invoices (stub for M5)
-CREATE TABLE billing_invoices (
+CREATE TABLE IF NOT EXISTS billing_invoices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider TEXT NOT NULL,
@@ -93,10 +93,10 @@ CREATE TABLE billing_invoices (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_billing_invoices_user_id ON billing_invoices(user_id);
+CREATE INDEX IF NOT EXISTS idx_billing_invoices_user_id ON billing_invoices(user_id);
 
 -- Payment webhook events (idempotency)
-CREATE TABLE payment_webhook_events (
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider TEXT NOT NULL,
     event_id TEXT NOT NULL UNIQUE,

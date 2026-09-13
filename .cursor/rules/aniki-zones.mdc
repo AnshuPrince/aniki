@@ -1,0 +1,20 @@
+---
+description: Aniki Discover→Operate zone discipline (Frodo philosophy, not G-P factory)
+alwaysApply: true
+---
+
+# Aniki zones
+
+Work in **Discover → Plan → Solve → Build → Operate**. One zone per stretch of work unless the user says **continue** / **chain**.
+
+| Zone | Writes | Does not |
+|------|--------|----------|
+| Discover | `docs/discovery/<slug>/` | Product code, APIs |
+| Plan | `docs/stories/<slug>/` | Architecture ADRs, code |
+| Solve | `docs/architecture/<slug>/` | App implementation |
+| Build | `apps/`, `packages/`, `crates/` | Inventing contracts Solve did not hand off |
+| Operate | `docs/playbook/`, health/CI/runbooks | New features |
+
+Handoffs live in `.cursor/plans/<slug>/`. Append learnings to `.cursor/plans/<slug>/learnings.md`.
+
+This is **not** a GP-Frodo workspace. Do not run `init-frodo-workspace`, FSA Phases 0–7, Event Catalog, SAM, MFE/Lyra, PBAC, Jira publish, or Vocal/Genie. Load Frodo skills **by name** only with Aniki output paths. Isolated `@threat-modeller` / `@solutions-architect` must be told: no FSA.

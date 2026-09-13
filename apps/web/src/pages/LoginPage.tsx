@@ -1,31 +1,26 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@aniki/ui";
+import { Navigate } from "react-router-dom";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@aniki/ui";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
 export function LoginPage() {
-  const { login, user } = useAuth();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (user) {
-    navigate("/");
-    return null;
+    return <Navigate to="/app" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startGoogle = async () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email);
-      setSent(true);
+      const { authorization_url } = await api.oauthGoogleStart();
+      window.location.assign(authorization_url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send magic link");
-    } finally {
+      setError(err instanceof Error ? err.message : "Google sign-in is unavailable");
       setLoading(false);
     }
   };
@@ -39,31 +34,11 @@ export function LoginPage() {
             Real-time interview assistant with resume-aware answers
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {sent ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Check your email for a magic link. In development, check the API logs for the link.
-              </p>
-              <Button variant="outline" onClick={() => setSent(false)}>
-                Try another email
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send magic link"}
-              </Button>
-            </form>
-          )}
+        <CardContent className="space-y-4">
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button className="w-full" onClick={() => void startGoogle()} disabled={loading}>
+            {loading ? "Redirecting…" : "Continue with Google"}
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -3,6 +3,24 @@ import type { CreditLedgerEntry } from "@aniki/shared";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@aniki/ui";
 import { api } from "../lib/api";
 
+const CREDIT_REASON_LABELS: Record<string, string> = {
+  signup_bonus: "Signup bonus",
+  session_start: "Interview session",
+  session_debit: "Interview session",
+  session_credit: "Session credit",
+  credit_purchase: "Credit purchase",
+  refund: "Refund",
+};
+
+function formatCreditReason(reason: string) {
+  return (
+    CREDIT_REASON_LABELS[reason] ??
+    reason
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
 export function BillingPage() {
   const [balance, setBalance] = useState(0);
   const [entries, setEntries] = useState<CreditLedgerEntry[]>([]);
@@ -22,10 +40,10 @@ export function BillingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Billing</h1>
-        <p className="text-muted-foreground">Credits and payment history (Stripe integration in Stage B)</p>
+        <p className="text-muted-foreground">View your credit balance and activity.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Credit balance</CardTitle>
@@ -34,18 +52,6 @@ export function BillingPage() {
           <CardContent>
             <p className="text-4xl font-bold text-primary">
               {loading ? "—" : balance.toFixed(1)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Buy credits</CardTitle>
-            <CardDescription>Payment gateway coming in Stage B</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              $9.99 for 10 credits · $29/mo unlimited (planned)
             </p>
           </CardContent>
         </Card>
@@ -64,7 +70,7 @@ export function BillingPage() {
             <ul className="divide-y divide-border">
               {entries.map((entry) => (
                 <li key={entry.id} className="flex justify-between py-2 text-sm">
-                  <span>{entry.reason}</span>
+                  <span>{formatCreditReason(entry.reason)}</span>
                   <span className={entry.delta >= 0 ? "text-primary" : "text-destructive"}>
                     {entry.delta >= 0 ? "+" : ""}
                     {entry.delta.toFixed(1)}

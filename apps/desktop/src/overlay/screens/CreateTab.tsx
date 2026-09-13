@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { LlmModel, Resume } from "@aniki/shared";
 import { Button } from "@aniki/ui";
 import { api } from "../../lib/api";
-import { MODEL_OPTIONS } from "../constants";
+import { CURRENT_MODEL } from "../constants";
 import { FieldLabel } from "../chrome/OverlayHeader";
 import { useOverlay } from "../context/OverlayContext";
 
@@ -17,7 +17,7 @@ export function CreateTab() {
   const [instructions, setInstructions] = useState("");
   const [resumeId, setResumeId] = useState("");
   const [resumes, setResumes] = useState<Resume[]>([]);
-  const [model, setModel] = useState<LlmModel>("gpt41");
+  const model: LlmModel = CURRENT_MODEL.value;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export function CreateTab() {
           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
         />
         <p className="mt-1 text-[10px] text-muted-foreground/60">
-          Fill fields from Interview Post URL — coming soon
+          Add the company name to tailor your interview context.
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export function CreateTab() {
             className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs"
           >
             <option value="">+ Resume</option>
-            {resumes.map((r) => (
+            {resumes.filter((r) => r.status === "ready").map((r) => (
               <option key={r.id} value={r.id}>
                 {r.filename}
               </option>
@@ -128,17 +128,9 @@ export function CreateTab() {
 
       <div>
         <FieldLabel>Output Settings</FieldLabel>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value as LlmModel)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
-        >
-          {MODEL_OPTIONS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+          {CURRENT_MODEL.label}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">Language: English</p>
       </div>
 

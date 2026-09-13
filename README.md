@@ -15,6 +15,8 @@ crates/audio-core — Audio capture pipeline (M2)
 crates/stealth-window — Stealth overlay APIs (M4)
 ```
 
+Agent workflow (Discover → Plan → Solve → Build → Operate) lives in [`AGENTS.md`](AGENTS.md) and `.cursor/skills/aniki-*/`. It mirrors Frodo zone discipline without G-P factory tooling.
+
 ## Prerequisites
 
 - Node.js 20+
@@ -77,14 +79,12 @@ raise the limit or look for a slow query holding connections.
 
 ### Auth flow (dev)
 
-1. Open http://localhost:3000 and sign in with email
-2. Check API logs for the magic link URL (email not sent in dev) and open it
-3. On the **Sessions** page, click **Copy access token**
-4. In the desktop overlay, choose **Access token** and paste it
+1. Open http://localhost:3000 (public landing), choose **Get started**, and **Continue with Google**
+   (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `apps/api/.env`; Google redirect `http://localhost:3000/auth/oauth/callback`)
+2. On the **Sessions** page (`/app/sessions`), click **Copy access token**
+3. In the desktop overlay, choose **Access token** and paste it
 
-The magic-link token is single-use: once the browser verifies it, the desktop cannot reuse it. The
-overlay's **Magic link** tab only works if you copy the `token=` value from the logs without opening
-the link first.
+The overlay **Magic link** tab is leftover from log-only email sign-in and is not the production path.
 
 ### Desktop (macOS)
 
@@ -102,15 +102,48 @@ docker compose --profile full up --build
 
 ## CI
 
-PR checks: `cargo check`, `cargo clippy`, `pnpm lint`, `pnpm typecheck`
+GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs on pull requests and pushes to `main`:
 
-## Deployment (pre-beta checklist)
+- Rust: Postgres + Redis services, `001` + `002` migrations, `cargo check` / `clippy` / `test`
+- Frontend: `pnpm typecheck`, `pnpm lint`, `@aniki/web` production build
+- Tauri: macOS and Windows overlay builds (artifacts stay in CI; no store publish)
 
-- API: `fly deploy` from `apps/api` (scale-to-zero configured in `fly.toml`)
-- Web: Cloudflare Pages (static build from `apps/web`)
-- Postgres: Neon free tier
-- Redis: Upstash free tier
-- Storage: Cloudflare R2
+PR runs cancel when a newer commit is pushed. Keep the workflow `name: CI` — deploy keys off that name.
+
+## Deployment
+
+CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `main`**, it deploys production (or run **Deploy** → **Run workflow**). Jobs use GitHub Environment `production` and `concurrency: deploy-production` (`cancel-in-progress: false`).
+
+| Piece | Target |
+|-------|--------|
+| API | Fly.io app `aniki-api` (`apps/api/fly.toml`, region `iad`) |
+| Web | Cloudflare Pages (`pnpm --filter @aniki/web build` → `apps/web/dist`) |
+| Postgres | Neon + pgvector |
+| Redis | Upstash (Fly secret `REDIS_URL`) |
+| Objects | R2 later — not required for first deploy |
+| Desktop | CI Tauri artifacts only |
+
+### One-time vendor setup
+
+1. **Neon** — Postgres 16, enable `pgvector`, copy the pooled `DATABASE_URL`.
+2. **Upstash** — Redis TLS URL → Fly `REDIS_URL`.
+3. **Fly** — `fly apps create aniki-api`, then `fly secrets set` (see below). First image: `flyctl deploy --config apps/api/fly.toml`.
+4. **Cloudflare Pages** — project name matching GitHub variable `CLOUDFLARE_PAGES_PROJECT`.
+5. **GitHub** — Environment `production` with the secrets and variables below.
+
+### Fly runtime secrets (not GitHub)
+
+Set on the Fly app: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (≥32 bytes), `APP_URL` (Pages origin, no trailing slash), `API_URL` (`https://aniki-api.fly.dev` or custom), `SPEECHMATICS_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `ANTHROPIC_API_KEY`, optional `CORS_ORIGINS` (comma-separated extra browser origins). Do not put database, LLM, or Google client secrets on Pages.
+
+Google sign-in uses a Web OAuth client. Redirects must be `http://localhost:3000/auth/oauth/callback` and `https://aniki-web.pages.dev/auth/oauth/callback`. Until Google verifies the app, **testing mode** allows about 100 test users. Consent can use `{APP_URL}/privacy`.
+
+### GitHub Environment `production`
+
+**Secrets:** `FLY_API_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DATABASE_URL` (Neon; used only to apply migrations, never logged).
+
+**Variables:** `API_URL` (Fly HTTPS origin, used for health checks and `VITE_API_URL` at Pages build), `CLOUDFLARE_PAGES_PROJECT`.
+
+Rollback: `fly releases rollback -a aniki-api`; Pages dashboard → previous deployment; Neon PITR / branch restore.
 
 ## License
 
