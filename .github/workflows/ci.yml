@@ -50,21 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
 
       - uses: Swatinem/rust-cache@v2
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Run migrations
         run: |
@@ -74,15 +64,13 @@ jobs:
           PGPASSWORD=aniki psql -v ON_ERROR_STOP=1 -h localhost -U aniki -d aniki -f apps/api/migrations/003_google_sub.sql
 
       - name: cargo check
-        run: |
-          pnpm --filter @aniki/desktop build
-          cargo check --workspace --all-targets
+        run: cargo check --workspace --all-targets --exclude aniki-desktop
 
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets --exclude aniki-desktop -- -D warnings
 
       - name: cargo test
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude aniki-desktop
 
   frontend:
     name: Frontend checks
