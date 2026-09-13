@@ -1,6 +1,3 @@
-#[cfg(target_os = "windows")]
-pub mod windows;
-
 use crate::{PlatformStealthStatus, StealthConfig};
 
 pub struct StealthWindow {
@@ -37,7 +34,7 @@ impl StealthWindow {
         #[cfg(target_os = "windows")]
         if self.config.exclude_from_capture {
             if let Ok(hwnd) = window.native_window_handle() {
-                windows::exclude_from_capture(hwnd)?;
+                crate::windows::exclude_from_capture(hwnd)?;
             }
         }
 
