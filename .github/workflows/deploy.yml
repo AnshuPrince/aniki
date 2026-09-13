@@ -121,12 +121,17 @@ jobs:
             exit 1
           fi
 
+      # wrangler-action installs its CLI into the repo, which neither pnpm nor
+      # npm can do in this workspace. dlx runs it from a temp dir instead.
       - name: Publish Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Without this the action infers pnpm from the root lockfile and
-          # `pnpm add wrangler` is refused at the workspace root.
-          packageManager: npm
-          command: pages deploy apps/web/dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=master --commit-hash=${{ steps.sha.outputs.sha }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          COMMIT_SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          set -euo pipefail
+          pnpm dlx wrangler@4.86.0 pages deploy apps/web/dist \
+            --project-name="$CLOUDFLARE_PAGES_PROJECT" \
+            --branch=master \
+            --commit-hash="$COMMIT_SHA"
