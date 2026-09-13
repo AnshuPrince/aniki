@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::services::upstream;
 
 pub async fn embed_text(config: &Config, text: &str) -> anyhow::Result<Vec<f32>> {
     let api_key = config
@@ -15,10 +16,13 @@ pub async fn embed_text(config: &Config, text: &str) -> anyhow::Result<Vec<f32>>
             "input": text,
         }))
         .send()
-        .await?
-        .error_for_status()?
-        .json::<serde_json::Value>()
         .await?;
+
+    if !response.status().is_success() {
+        return Err(upstream::error("openai embeddings", response).await);
+    }
+
+    let response = response.json::<serde_json::Value>().await?;
 
     let embedding = response["data"][0]["embedding"]
         .as_array()

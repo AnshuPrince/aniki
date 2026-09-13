@@ -4,6 +4,7 @@ use uuid::Uuid;
 use aniki_domain::SessionNotes;
 
 use crate::config::Config;
+use crate::services::upstream;
 
 pub async fn generate_session_notes(
     pool: &PgPool,
@@ -69,10 +70,13 @@ async fn generate_via_llm(
                 "reasoning_effort": "low",
             }))
             .send()
-            .await?
-            .error_for_status()?
-            .json::<serde_json::Value>()
             .await?;
+
+        if !response.status().is_success() {
+            return Err(upstream::error("openai chat", response).await);
+        }
+
+        let response = response.json::<serde_json::Value>().await?;
 
         let content = response["choices"][0]["message"]["content"]
             .as_str()

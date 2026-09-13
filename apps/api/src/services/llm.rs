@@ -5,6 +5,7 @@ use futures::stream::{self, Stream, StreamExt};
 use aniki_domain::LlmModel;
 
 use crate::config::Config;
+use crate::services::upstream;
 
 pub struct LlmStreamChunk {
     pub text: String,
@@ -59,10 +60,13 @@ pub async fn confirm_question(config: &Config, text: &str) -> anyhow::Result<boo
                 "reasoning_effort": "low",
             }))
             .send()
-            .await?
-            .error_for_status()?
-            .json::<serde_json::Value>()
             .await?;
+
+        if !response.status().is_success() {
+            return Err(upstream::error("openai chat", response).await);
+        }
+
+        let response = response.json::<serde_json::Value>().await?;
 
         let answer = response["choices"][0]["message"]["content"]
             .as_str()
@@ -150,12 +154,11 @@ async fn stream_openai(
         .send()
         .await
     {
-        Ok(r) => match r.error_for_status() {
-            Ok(ok) => ok,
-            Err(e) => {
-                return stream::once(async move { Err(e.into()) }).boxed();
-            }
-        },
+        Ok(r) if r.status().is_success() => r,
+        Ok(r) => {
+            let e = upstream::error("openai chat", r).await;
+            return stream::once(async move { Err(e) }).boxed();
+        }
         Err(e) => {
             return stream::once(async move { Err(e.into()) }).boxed();
         }
@@ -215,10 +218,11 @@ async fn stream_anthropic(
         .send()
         .await
     {
-        Ok(r) => match r.error_for_status() {
-            Ok(ok) => ok,
-            Err(e) => return stream::once(async move { Err(e.into()) }).boxed(),
-        },
+        Ok(r) if r.status().is_success() => r,
+        Ok(r) => {
+            let e = upstream::error("anthropic messages", r).await;
+            return stream::once(async move { Err(e) }).boxed();
+        }
         Err(e) => return stream::once(async move { Err(e.into()) }).boxed(),
     };
 
