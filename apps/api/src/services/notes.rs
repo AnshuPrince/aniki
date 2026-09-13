@@ -22,7 +22,7 @@ pub async fn generate_session_notes(
 
     let transcript = transcript.unwrap_or_default();
     let notes = if config.openai_api_key.is_some() || config.anthropic_api_key.is_some() {
-        generate_via_llm(&config, session_id, &transcript, extra.as_deref()).await?
+        generate_via_llm(config, session_id, &transcript, extra.as_deref()).await?
     } else {
         SessionNotes {
             session_id,

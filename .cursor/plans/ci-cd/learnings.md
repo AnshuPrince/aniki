@@ -13,3 +13,8 @@
 - Pages `VITE_API_URL` is a GitHub **variable** (`API_URL`), not a secret — it is baked into the static bundle.
 - Fly Neon/Upstash need sqlx `tls-rustls-ring-native-roots` and redis `tokio-rustls-comp`. Local `postgres://` / `redis://` still work.
 
+## 2026-09-13 — CI green on master
+
+- `pnpm/action-setup@v4` cannot set `version: 9` when `package.json` has `packageManager: pnpm@9.15.0`; omit `version` and let Corepack read the pin.
+- Workspace `clippy -D warnings` excludes `aniki-desktop` (cocoa/objc `msg_send!` unexpected_cfgs + deprecated). Tauri job still compiles the overlay.
+

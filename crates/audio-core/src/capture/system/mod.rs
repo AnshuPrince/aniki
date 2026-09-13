@@ -31,11 +31,11 @@ impl SystemCapture {
     pub fn start() -> Result<Self, String> {
         #[cfg(target_os = "macos")]
         {
-            return macos::start();
+            macos::start()
         }
         #[cfg(target_os = "windows")]
         {
-            return windows::start();
+            windows::start()
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         {

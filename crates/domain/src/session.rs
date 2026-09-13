@@ -10,18 +10,13 @@ pub enum SessionStatus {
     Failed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LlmModel {
+    #[default]
     Gpt41,
     ClaudeSonnet,
     Gpt41Mini,
-}
-
-impl Default for LlmModel {
-    fn default() -> Self {
-        Self::Gpt41
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

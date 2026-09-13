@@ -419,24 +419,6 @@ fn google_email_verified(userinfo: &serde_json::Value) -> bool {
     }
 }
 
-#[cfg(test)]
-mod oauth_tests {
-    use super::*;
-
-    #[test]
-    fn pkce_challenge_is_stable_base64url() {
-        let challenge = pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");
-        assert_eq!(challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
-    }
-
-    #[test]
-    fn google_verified_accepts_bool_and_string() {
-        assert!(google_email_verified(&serde_json::json!({"email_verified": true})));
-        assert!(google_email_verified(&serde_json::json!({"email_verified": "true"})));
-        assert!(!google_email_verified(&serde_json::json!({"email_verified": false})));
-    }
-}
-
 pub fn create_session_token(config: &Config, user: &User) -> anyhow::Result<String> {
     let now = Utc::now();
     let claims = SessionClaims {
@@ -467,4 +449,22 @@ fn hash_token(token: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(token.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+#[cfg(test)]
+mod oauth_tests {
+    use super::*;
+
+    #[test]
+    fn pkce_challenge_is_stable_base64url() {
+        let challenge = pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");
+        assert_eq!(challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    }
+
+    #[test]
+    fn google_verified_accepts_bool_and_string() {
+        assert!(google_email_verified(&serde_json::json!({"email_verified": true})));
+        assert!(google_email_verified(&serde_json::json!({"email_verified": "true"})));
+        assert!(!google_email_verified(&serde_json::json!({"email_verified": false})));
+    }
 }
