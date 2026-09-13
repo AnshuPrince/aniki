@@ -11,7 +11,7 @@ README already names Fly, Cloudflare Pages, Neon, Upstash, R2. Frodo `github-wor
 
 1. **Keep vendors** as README: Fly (API), Pages (web), Neon (Postgres+pgvector), Upstash (Redis), R2 (later with resume uploads).
 2. **Do not** call `gp-nova/devx-shared-workflows` or AWS `deploy-v1`.
-3. **CI stays** `.github/workflows/ci.yml`. **CD** is a second workflow triggered on successful CI on `main` (`workflow_run`) **or** on `v*` tags after CI. Prefer `workflow_run` on `main` for pre-beta.
+3. **CI stays** `.github/workflows/ci.yml`. **CD** is a second workflow triggered on successful CI on `master` (`workflow_run`) **or** on `v*` tags after CI. Prefer `workflow_run` on `master` for pre-beta. Primary git branch is `master` (do not rename to `main`).
 4. **Auth:** Fly Machines OIDC from GitHub; Cloudflare Pages via `cloudflare/pages-action` or Wrangler + OIDC. Fallback: Environment secrets `FLY_API_TOKEN`, `CLOUDFLARE_API_TOKEN`.
 5. **Data plane secrets** (DATABASE_URL, REDIS_URL, JWT_SECRET, LLM keys) live on **Fly**, not in GitHub, except tokens needed to *deploy*.
 6. **R2** is provisioned empty in story 1 docs; API env `R2_*` waits for the R2 product slice.

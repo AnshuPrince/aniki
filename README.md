@@ -102,7 +102,7 @@ docker compose --profile full up --build
 
 ## CI
 
-GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs on pull requests and pushes to `main`:
+GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs on pull requests and pushes to `master`:
 
 - Rust: Postgres + Redis services, `001` + `002` migrations, `cargo check` / `clippy` / `test`
 - Frontend: `pnpm typecheck`, `pnpm lint`, `@aniki/web` production build
@@ -112,7 +112,7 @@ PR runs cancel when a newer commit is pushed. Keep the workflow `name: CI` — d
 
 ## Deployment
 
-CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `main`**, it deploys production (or run **Deploy** → **Run workflow**). Jobs use GitHub Environment `production` and `concurrency: deploy-production` (`cancel-in-progress: false`).
+CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `master`**, it deploys production (or run **Deploy** → **Run workflow**). Jobs use GitHub Environment `production` and `concurrency: deploy-production` (`cancel-in-progress: false`). Cloudflare Pages production branch is `master` (match that in the Pages project settings).
 
 | Piece | Target |
 |-------|--------|

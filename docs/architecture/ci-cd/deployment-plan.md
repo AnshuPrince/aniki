@@ -7,13 +7,13 @@ Adapted from Frodo `create-prod-deployment-plan` (read-only; no gp-nova `repos/`
 | Component | Today | Target |
 |-----------|--------|--------|
 | API | Local `cargo run` / compose `full` | Fly `aniki-api` (`iad`), image from `apps/api/Dockerfile` |
-| Web | `pnpm dev:web` :3000 | Cloudflare Pages production branch `main` |
+| Web | `pnpm dev:web` :3000 | Cloudflare Pages production branch `master` |
 | Postgres | Docker pgvector:pg16 | Neon Postgres 16 + `pgvector` extension |
 | Redis | Docker redis:7 | Upstash Redis |
 | Objects | Bytes through API | R2 bucket (after upload slice) |
 | Desktop | Local `pnpm dev:desktop` | CI Tauri artifacts only |
-| CI | `ci.yml` on PR/`main` | Unchanged as gate |
-| CD | None | `deploy.yml` after green CI on `main` |
+| CI | `ci.yml` on PR/`master` | Unchanged as gate |
+| CD | None | `deploy.yml` after green CI on `master` |
 
 ## Per-provider click-ops (story 1)
 
@@ -54,7 +54,7 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [master]
 
 concurrency:
   group: deploy-production

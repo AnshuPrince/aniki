@@ -5,11 +5,11 @@
 
 ## User story
 
-As the operator, I want `main` (or a release tag) to build the API image and deploy to Fly only if CI passed so that production is not a laptop `fly deploy`.
+As the operator, I want `master` (or a release tag) to build the API image and deploy to Fly only if CI passed so that production is not a laptop `fly deploy`.
 
 ## Acceptance criteria
 
-- [ ] GIVEN CI on `main` failed THEN deploy does not run
+- [ ] GIVEN CI on `master` failed THEN deploy does not run
 - [ ] GIVEN CI succeeded THEN a deploy job uses `apps/api/Dockerfile` + `fly.toml` (`flyctl deploy --config apps/api/fly.toml --remote-only`)
 - [ ] GIVEN schema files changed THEN migrations apply to Neon **before** or atomically with the new API (explicit step; do not rely on API `run_migrations` `.ok()` swallow)
 - [ ] GIVEN `/health` THEN Fly HTTP checks continue; deploy job curls the public URL and fails if `database` is not `up`

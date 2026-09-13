@@ -1,6 +1,3 @@
-#[cfg(target_os = "windows")]
-pub mod windows;
-
 use crate::{PlatformStealthStatus, StealthConfig};
 
 pub struct StealthWindow {
@@ -37,7 +34,7 @@ impl StealthWindow {
         #[cfg(target_os = "windows")]
         if self.config.exclude_from_capture {
             if let Ok(hwnd) = window.native_window_handle() {
-                windows::exclude_from_capture(hwnd)?;
+                crate::windows::exclude_from_capture(hwnd)?;
             }
         }
 
@@ -96,18 +93,18 @@ mod sys_info {
     pub fn get_os_version() -> String {
         #[cfg(target_os = "macos")]
         {
-            return std::process::Command::new("sw_vers")
+            std::process::Command::new("sw_vers")
                 .arg("-productVersion")
                 .output()
                 .ok()
                 .and_then(|o| String::from_utf8(o.stdout).ok())
                 .unwrap_or_default()
                 .trim()
-                .to_string();
+                .to_string()
         }
         #[cfg(target_os = "windows")]
         {
-            return "Windows".to_string();
+            "Windows".to_string()
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         {

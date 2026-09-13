@@ -3,14 +3,14 @@
 /// Production VAD will use a proper model (e.g. WebRTC VAD or silero).
 pub struct VoiceActivityDetector {
     threshold: f32,
-    sample_rate: u32,
+    _sample_rate: u32,
 }
 
 impl VoiceActivityDetector {
     pub fn new(threshold: f32, sample_rate: u32) -> Self {
         Self {
             threshold,
-            sample_rate,
+            _sample_rate: sample_rate,
         }
     }
 

@@ -61,7 +61,9 @@ fn run_wasapi_loopback(
     stop: Arc<AtomicBool>,
     ready_tx: mpsc::SyncSender<Result<u32, String>>,
 ) -> Result<(), String> {
-    initialize_mta().map_err(|e| e.to_string())?;
+    initialize_mta()
+        .ok()
+        .map_err(|e| e.to_string())?;
 
     let device = get_default_device(&Direction::Render).map_err(|e| e.to_string())?;
     let mut audio_client = device.get_iaudioclient().map_err(|e| e.to_string())?;
@@ -84,16 +86,31 @@ fn run_wasapi_loopback(
         .map_err(|e| e.to_string())?;
     audio_client.start_stream().map_err(|e| e.to_string())?;
 
+    let bytes_per_frame = mix_format.get_blockalign().max(1) as usize;
     let _ = ready_tx.send(Ok(sample_rate));
 
     while !stop.load(Ordering::Relaxed) {
         let _ = h_event.wait_for_event(200);
-        let mut frames: Vec<u8> = Vec::new();
-        match capture_client.read_from_device_to_vec(&mut frames) {
-            Ok(_) => {
-                let pcm = bytes_to_mono_i16(&frames, mix_format, channels);
+        let frames_available = match capture_client.get_next_packet_size() {
+            Ok(Some(n)) if n > 0 => n as usize,
+            Ok(_) => continue,
+            Err(_) => {
+                thread::sleep(std::time::Duration::from_millis(10));
+                continue;
+            }
+        };
+        let mut frames = vec![0u8; frames_available * bytes_per_frame];
+        match capture_client.read_from_device(&mut frames) {
+            Ok((frames_read, _)) if frames_read > 0 => {
+                let used = (frames_read as usize).saturating_mul(bytes_per_frame);
+                let pcm = bytes_to_mono_i16(
+                    &frames[..used.min(frames.len())],
+                    &mix_format,
+                    channels,
+                );
                 push_mono_i16(&buffer, &rms, &capturing, &pcm);
             }
+            Ok(_) => {}
             Err(_) => {
                 thread::sleep(std::time::Duration::from_millis(10));
             }
@@ -104,7 +121,7 @@ fn run_wasapi_loopback(
     Ok(())
 }
 
-fn bytes_to_mono_i16(bytes: &[u8], format: WaveFormat, channels: usize) -> Vec<i16> {
+fn bytes_to_mono_i16(bytes: &[u8], format: &WaveFormat, channels: usize) -> Vec<i16> {
     let bits = format.get_bitspersample();
     let ch = channels.max(1);
     if bits == 32 && bytes.len() % 4 == 0 {

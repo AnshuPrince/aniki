@@ -29,11 +29,3 @@ pub async fn embed_text(config: &Config, text: &str) -> anyhow::Result<Vec<f32>>
 
     Ok(embedding)
 }
-
-pub async fn embed_texts(config: &Config, texts: &[String]) -> anyhow::Result<Vec<Vec<f32>>> {
-    let mut out = Vec::with_capacity(texts.len());
-    for text in texts {
-        out.push(embed_text(config, text).await?);
-    }
-    Ok(out)
-}

@@ -5,7 +5,7 @@ CI exists (`.github/workflows/ci.yml`: check/clippy/test, frontend, Tauri macOS/
 
 ## Evidence
 - Code / docs (paths):
-  - `.github/workflows/ci.yml` — PR/push `main` only; no `environment:`, no deploy jobs
+  - `.github/workflows/ci.yml` — PR/push `master` only; no `environment:`, no deploy jobs
   - `apps/api/fly.toml` — app `aniki-api`, region `iad`, Dockerfile, `/health`, scale-to-zero
   - `apps/api/Dockerfile` — cargo-chef release binary
   - `apps/api/Dockerfile.migrate` — local compose only
@@ -31,11 +31,11 @@ Operator (you) shipping Aniki. Desktop users install Tauri builds; they do not h
 - Auto-publish desktop to App Store
 
 ## Examples (example mapping)
-- Rule: CI stays the gate; CD runs only after CI succeeds on `main` (or a tag).
+- Rule: CI stays the gate; CD runs only after CI succeeds on `master` (or a tag).
 - Example: Failed clippy → no Fly deploy.
 - Rule: Database URL never in the workflow file; Fly secrets / GitHub Environments only.
 - Rule: Pages build injects `VITE_API_URL` to the Fly HTTPS hostname.
-- Question: Deploy on every `main` push vs GitHub Release tags?
+- Question: Deploy on every `master` push vs GitHub Release tags?
 
 ## Success
 A written plan an operator can follow: provision each vendor, which GitHub Environment secrets exist, which workflow jobs deploy what, rollback.
