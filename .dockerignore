@@ -1,0 +1,14 @@
+target/
+**/target/
+node_modules/
+**/node_modules/
+.git/
+.turbo/
+**/.turbo/
+**/dist/
+apps/desktop/src-tauri/gen/
+docs/
+.cursor/
+**/.env
+**/.env.*
+!**/.env.example

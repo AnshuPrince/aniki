@@ -1,24 +1,18 @@
 # Build stage
-FROM rust:1.83-bookworm AS chef
-RUN cargo install cargo-chef
+FROM rust:1.97-bookworm AS chef
+# --locked keeps cargo-chef's published dependency versions. Without it Cargo
+# resolves fresh and can pick crates that need a newer edition than this image.
+RUN cargo install cargo-chef --locked --version 0.1.78
 WORKDIR /app
 
 FROM chef AS planner
-COPY Cargo.toml Cargo.lock* ./
-COPY apps/api/Cargo.toml apps/api/
-COPY crates/domain/Cargo.toml crates/domain/
-COPY crates/audio-core/Cargo.toml crates/audio-core/
-COPY crates/stealth-window/Cargo.toml crates/stealth-window/
-RUN mkdir -p apps/api/src crates/domain/src crates/audio-core/src crates/stealth-window/src && \
-    echo "fn main(){}" > apps/api/src/main.rs && \
-    echo "" > crates/domain/src/lib.rs && \
-    echo "" > crates/audio-core/src/lib.rs && \
-    echo "" > crates/stealth-window/src/lib.rs
+COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+# -p aniki-api keeps the desktop overlay's Tauri/GTK dependencies out of the build.
+RUN cargo chef cook --release -p aniki-api --recipe-path recipe.json
 COPY . .
 RUN cargo build --release -p aniki-api
 
