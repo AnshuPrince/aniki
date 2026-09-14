@@ -7,6 +7,7 @@ export function ResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const loadResumes = useCallback(async () => {
@@ -38,6 +39,24 @@ export function ResumesPage() {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleDelete = async (resume: Resume) => {
+    if (
+      !window.confirm(
+        `Delete "${resume.filename}"? This permanently removes the file and its answer context.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(resume.id);
+    try {
+      await api.deleteResume(resume.id);
+      setResumes((current) => current.filter((item) => item.id !== resume.id));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -86,9 +105,19 @@ export function ResumesPage() {
                       {resume.chunk_count} chunks · {resume.status}
                     </p>
                   </div>
-                  <span className="rounded-full bg-secondary px-2 py-1 text-xs capitalize">
-                    {resume.status}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-secondary px-2 py-1 text-xs capitalize">
+                      {resume.status}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deletingId === resume.id}
+                      onClick={() => handleDelete(resume)}
+                    >
+                      {deletingId === resume.id ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

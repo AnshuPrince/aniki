@@ -5,6 +5,7 @@ use axum::http::HeaderValue;
 
 #[derive(Clone)]
 pub struct Config {
+    pub environment: String,
     pub database_url: String,
     pub redis_url: String,
     pub jwt_secret: String,
@@ -25,18 +26,22 @@ pub struct Config {
     pub cors_origins_extra: Option<String>,
     pub google_client_id: Option<String>,
     pub google_client_secret: Option<String>,
+    pub github_token: Option<String>,
 }
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
-        Ok(Self {
+        let config = Self {
+            environment: std::env::var("ANIKI_ENV").unwrap_or_else(|_| "development".to_string()),
             database_url: std::env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "postgres://aniki:aniki@localhost:5432/aniki".to_string()),
             redis_url: std::env::var("REDIS_URL")
                 .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
             jwt_secret: std::env::var("JWT_SECRET")
                 .unwrap_or_else(|_| "dev-jwt-secret-change-in-production".to_string()),
-            speechmatics_api_key: std::env::var("SPEECHMATICS_API_KEY").ok().filter(|s| !s.is_empty()),
+            speechmatics_api_key: std::env::var("SPEECHMATICS_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
             speechmatics_region: std::env::var("SPEECHMATICS_REGION")
                 .unwrap_or_else(|_| "eu".to_string()),
             app_url: std::env::var("APP_URL")
@@ -49,8 +54,12 @@ impl Config {
                 .unwrap_or(8080),
             session_credit_cost: 0.5,
             free_trial_credits: 5.0,
-            openai_api_key: std::env::var("OPENAI_API_KEY").ok().filter(|s| !s.is_empty()),
-            anthropic_api_key: std::env::var("ANTHROPIC_API_KEY").ok().filter(|s| !s.is_empty()),
+            openai_api_key: std::env::var("OPENAI_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
+            anthropic_api_key: std::env::var("ANTHROPIC_API_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
             embedding_model: std::env::var("EMBEDDING_MODEL")
                 .unwrap_or_else(|_| "text-embedding-3-small".to_string()),
             openai_chat_model: std::env::var("OPENAI_CHAT_MODEL")
@@ -60,11 +69,35 @@ impl Config {
             confirm_model: std::env::var("CONFIRM_MODEL")
                 .unwrap_or_else(|_| "gpt-5.6-luna".to_string()),
             cors_origins_extra: std::env::var("CORS_ORIGINS").ok().filter(|s| !s.is_empty()),
-            google_client_id: std::env::var("GOOGLE_CLIENT_ID").ok().filter(|s| !s.is_empty()),
+            google_client_id: std::env::var("GOOGLE_CLIENT_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
             google_client_secret: std::env::var("GOOGLE_CLIENT_SECRET")
                 .ok()
                 .filter(|s| !s.is_empty()),
-        })
+            github_token: std::env::var("GITHUB_TOKEN").ok().filter(|s| !s.is_empty()),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+
+    fn validate(&self) -> anyhow::Result<()> {
+        if self.environment != "production" {
+            return Ok(());
+        }
+        if self.jwt_secret.is_empty() || self.jwt_secret == "dev-jwt-secret-change-in-production" {
+            anyhow::bail!("JWT_SECRET must be set to a non-development value in production");
+        }
+        if !self.google_oauth_configured() {
+            anyhow::bail!("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in production");
+        }
+        if self.openai_api_key.is_none() {
+            anyhow::bail!("OPENAI_API_KEY must be set in production");
+        }
+        if self.speechmatics_api_key.is_none() {
+            anyhow::bail!("SPEECHMATICS_API_KEY must be set in production");
+        }
+        Ok(())
     }
 
     pub fn google_oauth_configured(&self) -> bool {
@@ -92,7 +125,11 @@ impl Config {
     }
 }
 
-fn push_origin(seen: &mut BTreeSet<String>, out: &mut Vec<HeaderValue>, raw: &str) -> anyhow::Result<()> {
+fn push_origin(
+    seen: &mut BTreeSet<String>,
+    out: &mut Vec<HeaderValue>,
+    raw: &str,
+) -> anyhow::Result<()> {
     let origin = raw.trim().trim_end_matches('/').to_string();
     if origin.is_empty() || !seen.insert(origin.clone()) {
         return Ok(());
@@ -103,7 +140,10 @@ fn push_origin(seen: &mut BTreeSet<String>, out: &mut Vec<HeaderValue>, raw: &st
     Ok(())
 }
 
-pub(crate) fn parse_cors_origins(app_url: &str, extra: Option<&str>) -> anyhow::Result<Vec<HeaderValue>> {
+pub(crate) fn parse_cors_origins(
+    app_url: &str,
+    extra: Option<&str>,
+) -> anyhow::Result<Vec<HeaderValue>> {
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
     push_origin(&mut seen, &mut out, app_url)?;
@@ -152,12 +192,46 @@ mod tests {
         .unwrap();
         let set = origin_set(&headers);
         assert!(set.contains("https://aniki.example"));
-        assert_eq!(set.iter().filter(|o| *o == "https://aniki.pages.dev").count(), 1);
+        assert_eq!(
+            set.iter()
+                .filter(|o| *o == "https://aniki.pages.dev")
+                .count(),
+            1
+        );
     }
 
     #[test]
     fn cors_rejects_invalid_origin() {
-        let err = parse_cors_origins("https://ok.example", Some("not a header\nvalue")).unwrap_err();
+        let err =
+            parse_cors_origins("https://ok.example", Some("not a header\nvalue")).unwrap_err();
         assert!(err.to_string().contains("invalid CORS origin"));
+    }
+
+    #[test]
+    fn production_config_requires_critical_secrets() {
+        let config = Config {
+            environment: "production".to_string(),
+            database_url: String::new(),
+            redis_url: String::new(),
+            jwt_secret: "dev-jwt-secret-change-in-production".to_string(),
+            speechmatics_api_key: None,
+            speechmatics_region: String::new(),
+            app_url: String::new(),
+            api_url: String::new(),
+            port: 8080,
+            session_credit_cost: 0.5,
+            free_trial_credits: 5.0,
+            openai_api_key: None,
+            anthropic_api_key: None,
+            embedding_model: String::new(),
+            openai_chat_model: String::new(),
+            anthropic_chat_model: String::new(),
+            confirm_model: String::new(),
+            cors_origins_extra: None,
+            google_client_id: None,
+            google_client_secret: None,
+            github_token: None,
+        };
+        assert!(config.validate().is_err());
     }
 }

@@ -1,11 +1,12 @@
 mod auth;
 mod billing;
+mod desktop;
 mod health;
 mod resumes;
 mod sessions;
 mod stt;
 
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 
 use crate::middleware::auth_middleware;
@@ -17,14 +18,28 @@ pub fn create_router(state: AppState) -> Router {
         .route("/auth/magic-link", post(auth::request_magic_link))
         .route("/auth/verify", post(auth::verify_token))
         .route("/auth/oauth/google/start", get(auth::google_oauth_start))
-        .route("/auth/oauth/google/callback", post(auth::google_oauth_callback));
+        .route(
+            "/auth/oauth/google/callback",
+            post(auth::google_oauth_callback),
+        );
 
     let protected = Router::new()
         .route("/auth/me", get(auth::me))
-        .route("/resumes", get(resumes::list_resumes).post(resumes::upload_resume))
-        .route("/sessions", get(sessions::list_sessions).post(sessions::create_session))
+        .route(
+            "/resumes",
+            get(resumes::list_resumes).post(resumes::upload_resume),
+        )
+        .route("/resumes/{id}", delete(resumes::delete_resume))
+        .route("/desktop/latest", get(desktop::latest_release))
+        .route(
+            "/sessions",
+            get(sessions::list_sessions).post(sessions::create_session),
+        )
         .route("/sessions/{id}", get(sessions::get_session))
-        .route("/sessions/{id}/transcript", post(sessions::append_transcript))
+        .route(
+            "/sessions/{id}/transcript",
+            post(sessions::append_transcript),
+        )
         .route("/sessions/{id}/answer", post(sessions::answer_question))
         .route("/sessions/{id}/finalize", post(sessions::finalize_session))
         .route("/sessions/{id}/stt-jwt", post(stt::refresh_stt_jwt))

@@ -14,7 +14,10 @@ use tauri_plugin_global_shortcut::{Code, ShortcutState};
 pub(crate) struct TauriStealthWindow(pub WebviewWindow);
 
 impl StealthWindowHandle for TauriStealthWindow {
-    fn set_content_protected(&self, enabled: bool) -> Result<(), aniki_stealth_window::StealthError> {
+    fn set_content_protected(
+        &self,
+        enabled: bool,
+    ) -> Result<(), aniki_stealth_window::StealthError> {
         self.0
             .set_content_protected(enabled)
             .map_err(|e| aniki_stealth_window::StealthError::Platform(e.to_string()))
@@ -81,6 +84,9 @@ pub fn run() {
         .manage(AppAudioState::default())
         .manage(collapse::CollapseState::default())
         .invoke_handler(tauri::generate_handler![
+            commands::credential_get,
+            commands::credential_set,
+            commands::credential_delete,
             commands::start_audio_session,
             commands::stop_audio_session,
             commands::get_audio_status,
@@ -141,22 +147,20 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            match event {
-                RunEvent::ExitRequested { api, .. } => {
-                    if tray::should_prevent_exit() {
-                        api.prevent_exit();
-                    }
+        .run(|app_handle, event| match event {
+            RunEvent::ExitRequested { api, .. } => {
+                if tray::should_prevent_exit() {
+                    api.prevent_exit();
                 }
-                RunEvent::WindowEvent { label, event, .. } => {
-                    if label == "main" {
-                        if let WindowEvent::CloseRequested { api, .. } = event {
-                            api.prevent_close();
-                            let _ = overlay_windows::hide_all_overlays(app_handle);
-                        }
-                    }
-                }
-                _ => {}
             }
+            RunEvent::WindowEvent { label, event, .. } => {
+                if label == "main" {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = overlay_windows::hide_all_overlays(app_handle);
+                    }
+                }
+            }
+            _ => {}
         });
 }

@@ -24,17 +24,10 @@ function ProtectedRoute({ children }: Readonly<{ children: React.ReactNode }>) {
   return <>{children}</>;
 }
 
-function LandingRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/app" replace />;
-  return <LandingPage />;
-}
-
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingRoute />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/auth/verify" element={<VerifyPage />} />

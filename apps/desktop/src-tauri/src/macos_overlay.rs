@@ -3,10 +3,7 @@
 
 #[cfg(target_os = "macos")]
 pub fn configure_overlay_panel(window: &tauri::WebviewWindow) -> Result<(), String> {
-    use tauri_nspanel::{
-        cocoa::appkit::NSWindowCollectionBehavior,
-        WebviewWindowExt as _,
-    };
+    use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, WebviewWindowExt as _};
 
     // NSWindowStyleMaskNonActivatingPanel — receive events without stealing focus.
     #[allow(non_upper_case_globals)]

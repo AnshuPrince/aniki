@@ -1,8 +1,8 @@
-use axum::extract::State;
+use aniki_domain::{Resume, ResumeListResponse, ResumeStatus, UploadResumeResponse};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use aniki_domain::{Resume, ResumeListResponse, ResumeStatus, UploadResumeResponse};
 
 use crate::services::rag;
 use crate::state::AppState;
@@ -61,8 +61,7 @@ pub async fn upload_resume(
         let resume_id = resume.id;
         let filename = req.filename.clone();
         tokio::spawn(async move {
-            if let Err(e) =
-                rag::process_resume(&pool, &config, resume_id, &filename, &bytes).await
+            if let Err(e) = rag::process_resume(&pool, &config, resume_id, &filename, &bytes).await
             {
                 tracing::error!(error = %e, %resume_id, "resume processing failed");
             }
@@ -76,6 +75,24 @@ pub async fn upload_resume(
             upload_url: None,
         }),
     ))
+}
+
+pub async fn delete_resume(
+    State(state): State<AppState>,
+    axum::Extension(claims): axum::Extension<aniki_domain::SessionClaims>,
+    Path(resume_id): Path<uuid::Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    let deleted = sqlx::query("DELETE FROM resumes WHERE id = $1 AND user_id = $2 RETURNING id")
+        .bind(resume_id)
+        .bind(claims.sub)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, %resume_id, "delete resume failed");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    deleted.map_or(Err(StatusCode::NOT_FOUND), |_| Ok(StatusCode::NO_CONTENT))
 }
 
 struct ResumeRow {

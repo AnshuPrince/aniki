@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { DesktopDownloads } from "../components/DesktopDownloads";
+import { useAuth } from "../lib/auth";
 
 const features = [
   {
@@ -142,6 +144,8 @@ function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
 }
 
 export function LandingPage() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <a
@@ -163,18 +167,13 @@ export function LandingPage() {
             <a href="#pricing" className="transition hover:text-foreground">Pricing</a>
             <a href="#faq" className="transition hover:text-foreground">FAQ</a>
           </nav>
-          <div className="ml-auto flex items-center gap-2 md:ml-8">
+          <div className="ml-auto flex items-center gap-3 md:ml-8">
+            {user ? <DesktopDownloads /> : null}
             <Link
-              to="/login"
-              className="hidden rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground sm:block"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/login"
+              to={user ? "/app" : "/login"}
               className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition hover:brightness-110"
             >
-              Get started
+              {user ? "Open app" : "Get started"}
             </Link>
           </div>
         </div>
@@ -199,10 +198,10 @@ export function LandingPage() {
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to="/login"
+                  to={user ? "/app" : "/login"}
                   className="rounded-full bg-primary px-7 py-3.5 text-center text-sm font-bold text-primary-foreground transition hover:brightness-110"
                 >
-                  Start with 5 free credits
+                  {user ? "Open your dashboard" : "Start with 5 free credits"}
                 </Link>
                 <a
                   href="#how-it-works"

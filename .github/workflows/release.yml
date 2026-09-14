@@ -1,0 +1,98 @@
+name: Release desktop
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Require green CI and production URLs
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Require CI success for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          conclusion="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" --workflow CI --json conclusion --jq '.[0].conclusion // empty')"
+          if [ "$conclusion" != "success" ]; then
+            echo "CI has not succeeded for $GITHUB_SHA (got ${conclusion:-none})."
+            exit 1
+          fi
+
+      - name: Require release Environment values
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_WEB_URL: ${{ vars.WEB_URL }}
+        run: |
+          set -euo pipefail
+          for name in VITE_API_URL VITE_WEB_URL; do
+            test -n "${!name:-}" || { echo "Missing GitHub Environment release value: $name"; exit 1; }
+          done
+          case "$VITE_API_URL$VITE_WEB_URL" in
+            *localhost*) echo "API_URL and WEB_URL must be HTTPS production origins"; exit 1 ;;
+          esac
+
+  macos:
+    name: Build macOS installer
+    needs: gate
+    runs-on: macos-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_WEB_URL: ${{ vars.WEB_URL }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: Aniki ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: false
+          args: --target aarch64-apple-darwin
+
+  windows:
+    name: Build Windows installer
+    needs: gate
+    runs-on: windows-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_WEB_URL: ${{ vars.WEB_URL }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: Aniki ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc

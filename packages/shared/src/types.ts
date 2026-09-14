@@ -41,6 +41,12 @@ export interface UploadResumeResponse {
   upload_url: string | null;
 }
 
+export interface DesktopRelease {
+  version: string;
+  macos_dmg: string | null;
+  windows_exe: string | null;
+}
+
 export type SessionStatus = "active" | "ended" | "failed";
 export type LlmModel = "gpt41" | "claude_sonnet" | "gpt41_mini";
 
