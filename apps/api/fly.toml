@@ -5,6 +5,7 @@ primary_region = "iad"
   dockerfile = "Dockerfile"
 
 [env]
+  ANIKI_ENV = "production"
   PORT = "8080"
   RUST_LOG = "aniki_api=info,tower_http=info"
 

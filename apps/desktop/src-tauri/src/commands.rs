@@ -47,6 +47,37 @@ pub struct AudioStatusResponse {
     pub live_stt: bool,
 }
 
+const CREDENTIAL_SERVICE: &str = "ai.aniki.desktop";
+const CREDENTIAL_ACCOUNT: &str = "access_token";
+
+fn credential() -> Result<keyring::Entry, String> {
+    keyring::Entry::new(CREDENTIAL_SERVICE, CREDENTIAL_ACCOUNT).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn credential_get() -> Result<Option<String>, String> {
+    match credential()?.get_password() {
+        Ok(token) => Ok(Some(token)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn credential_set(token: String) -> Result<(), String> {
+    credential()?
+        .set_password(&token)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn credential_delete() -> Result<(), String> {
+    match credential()?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 #[tauri::command]
 pub async fn start_audio_session(
     app: tauri::AppHandle,
@@ -63,7 +94,9 @@ pub async fn start_audio_session(
     let mut capture = DualCapture::new(PipelineConfig::default());
     capture.start().map_err(|e| {
         tracing::error!(error = %e, "Failed to start microphone capture");
-        format!("Microphone error: {e}. Check System Settings → Privacy → Microphone and allow Aniki.")
+        format!(
+            "Microphone error: {e}. Check System Settings → Privacy → Microphone and allow Aniki."
+        )
     })?;
 
     let config = transcription_config.unwrap_or_else(|| {
@@ -79,14 +112,9 @@ pub async fn start_audio_session(
     let system_capturing = capture.system_capturing();
     let system_level = capture.system_level();
 
-    let handle = crate::stt_client::start_stt_session(
-        app.clone(),
-        stt_endpoint,
-        stt_jwt,
-        config,
-        capture,
-    )
-    .await?;
+    let handle =
+        crate::stt_client::start_stt_session(app.clone(), stt_endpoint, stt_jwt, config, capture)
+            .await?;
 
     *state.stt.lock().map_err(|e| e.to_string())? = Some(handle);
 
@@ -101,7 +129,9 @@ pub async fn start_audio_session(
 }
 
 #[tauri::command]
-pub async fn get_audio_status(state: State<'_, AppAudioState>) -> Result<AudioStatusResponse, String> {
+pub async fn get_audio_status(
+    state: State<'_, AppAudioState>,
+) -> Result<AudioStatusResponse, String> {
     let dev_mode = *state.dev_stt_mode.lock().map_err(|e| e.to_string())?;
     let capture_guard = state.capture.lock().map_err(|e| e.to_string())?;
     let (mic_active, mic_level, system_capturing, system_level) =
@@ -139,15 +169,8 @@ pub async fn stop_audio_session(state: State<'_, AppAudioState>) -> Result<(), S
 }
 
 #[tauri::command]
-pub async fn refresh_stt_jwt(
-    state: State<'_, AppAudioState>,
-    jwt: String,
-) -> Result<(), String> {
-    let handle = state
-        .stt
-        .lock()
-        .map_err(|e| e.to_string())?
-        .clone();
+pub async fn refresh_stt_jwt(state: State<'_, AppAudioState>, jwt: String) -> Result<(), String> {
+    let handle = state.stt.lock().map_err(|e| e.to_string())?.clone();
     if let Some(handle) = handle {
         handle.update_jwt(jwt).await;
     }

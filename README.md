@@ -88,11 +88,14 @@ The overlay **Magic link** tab is leftover from log-only email sign-in and is no
 
 ### Desktop (macOS)
 
+Production installers are GitHub Releases (unsigned `.dmg` / NSIS), shown after you sign in on the dashboard (or on `/` while signed in). PR CI Tauri builds are compile-only and are not published. macOS Gatekeeper and Windows SmartScreen will warn because the binaries are not Developer ID / Authenticode signed.
+
 - There is no Dock icon. Use the **menu bar tray**: Show overlay, Toggle click-through, Quit Aniki.
 - Grant **Microphone** and **Screen Recording** (interviewer system audio + OCR) in System Settings → Privacy & Security.
 - Overlay hotkeys: `⌘⇧H` collapse to the pebble icon / expand, `⌘⇧C` click-through.
 - **Collapse** shrinks the overlay to a ~1cm circular icon that stays on screen; click it to expand.
   **Stealth hide** (red ×) removes it entirely — restore from the tray.
+- The overlay stores the session JWT in the OS credential store (Keychain / Credential Manager), not browser storage.
 
 ## Docker (full stack)
 
@@ -106,7 +109,7 @@ GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs on pull request
 
 - Rust: Postgres + Redis services, `001` + `002` migrations, `cargo check` / `clippy` / `test`
 - Frontend: `pnpm typecheck`, `pnpm lint`, `@aniki/web` production build
-- Tauri: macOS and Windows overlay builds (artifacts stay in CI; no store publish)
+- Tauri: macOS and Windows overlay builds (unsigned compile gate). Installers ship from **Release desktop** on `v*` tags (also unsigned until signing certs are added later).
 
 PR runs cancel when a newer commit is pushed. Keep the workflow `name: CI` — deploy keys off that name.
 
@@ -121,7 +124,7 @@ CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `master`*
 | Postgres | Neon + pgvector |
 | Redis | Upstash (Fly secret `REDIS_URL`) |
 | Objects | R2 later — not required for first deploy |
-| Desktop | CI Tauri artifacts only |
+| Desktop | GitHub Releases (unsigned `.dmg` / NSIS), download after sign-in |
 
 ### One-time vendor setup
 
@@ -133,7 +136,7 @@ CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `master`*
 
 ### Fly runtime secrets (not GitHub)
 
-Set on the Fly app: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (≥32 bytes), `APP_URL` (Pages origin, no trailing slash), `API_URL` (`https://aniki-api.fly.dev` or custom), `SPEECHMATICS_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `ANTHROPIC_API_KEY`, optional `CORS_ORIGINS` (comma-separated extra browser origins). Do not put database, LLM, or Google client secrets on Pages.
+Set on the Fly app: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (≥32 bytes, not the documented-dev default), `APP_URL` (Pages origin, no trailing slash), `API_URL` (`https://aniki-api.fly.dev` or custom), `SPEECHMATICS_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `ANTHROPIC_API_KEY`, optional `CORS_ORIGINS`, optional `GITHUB_TOKEN` (rate-limit for `/desktop/latest`). `ANIKI_ENV=production` is set in `fly.toml`. Do not put database, LLM, or Google client secrets on Pages.
 
 Google sign-in uses a Web OAuth client. Redirects must be `http://localhost:3000/auth/oauth/callback` and `https://aniki-web.pages.dev/auth/oauth/callback`. Until Google verifies the app, **testing mode** allows about 100 test users. Consent can use `{APP_URL}/privacy`.
 
@@ -143,7 +146,15 @@ Google sign-in uses a Web OAuth client. Redirects must be `http://localhost:3000
 
 **Variables:** `API_URL` (Fly HTTPS origin, used for health checks and `VITE_API_URL` at Pages build), `CLOUDFLARE_PAGES_PROJECT`.
 
-Rollback: `fly releases rollback -a aniki-api`; Pages dashboard → previous deployment; Neon PITR / branch restore.
+### GitHub Environment `release`
+
+Used by `.github/workflows/release.yml` on `v*` tags. **Does not publish if `API_URL` or `WEB_URL` is empty or contains `localhost`.** Apple/Windows signing secrets are not required.
+
+**Variables:** `API_URL`, `WEB_URL` (Pages origin; baked into the overlay as `VITE_*`).
+
+Tag a SHA that already has green **CI**, then `git push origin v0.1.0`.
+
+Rollback: `fly releases rollback -a aniki-api`; Pages dashboard → previous deployment; Neon PITR / branch restore. GitHub Release: mark the previous tag as latest.
 
 ## License
 

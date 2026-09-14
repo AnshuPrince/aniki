@@ -11,9 +11,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, clearAccessToken, setAccessToken } from "../../lib/api";
+import { api, clearAccessToken, restoreAccessToken, setAccessToken } from "../../lib/api";
 import { debouncedQuestionCheck } from "../../lib/questionDetect";
-import { TOKEN_KEY } from "../constants";
 import { useCollapse } from "../hooks/useCollapse";
 import { setLiveSize, setShellSize } from "../hooks/useWindowSize";
 import type { OverlayScreen, TranscriptLine } from "../types";
@@ -86,17 +85,18 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   autoAnswerRef.current = autoAnswer;
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-    setAccessToken(token);
-    api
-      .me()
+    restoreAccessToken()
+      .then((token) => {
+        if (!token) return;
+        return api.me();
+      })
       .then((u) => {
+        if (!u) return;
         setUser(u);
         setScreen("shell");
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
+        void clearAccessToken();
       });
   }, []);
 
@@ -225,7 +225,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (verifyToken: string) => {
     const response = await api.verifyToken(verifyToken);
-    setAccessToken(response.access_token);
+    await setAccessToken(response.access_token);
     setUser(response.user);
     setScreen("shell");
     await setShellSize();
@@ -233,14 +233,14 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 
   /// The web dashboard hands out a session JWT, not a magic-link token.
   const loginWithAccessToken = useCallback(async (accessToken: string) => {
-    setAccessToken(accessToken);
+    await setAccessToken(accessToken);
     try {
       const profile = await api.me();
       setUser(profile);
       setScreen("shell");
       await setShellSize();
     } catch (e) {
-      clearAccessToken();
+      await clearAccessToken();
       throw e instanceof Error && e.message
         ? new Error("That access token was rejected. Copy a fresh one from the web dashboard.")
         : e;
@@ -248,7 +248,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    clearAccessToken();
+    void clearAccessToken();
     setUser(null);
     setScreen("login");
     setSession(null);

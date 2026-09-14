@@ -196,7 +196,9 @@ async fn run_stt_with_audio(
             }
         }
 
-        let end = EndOfStream { message: "EndOfStream" };
+        let end = EndOfStream {
+            message: "EndOfStream",
+        };
         let _ = write
             .send(Message::Text(serde_json::to_string(&end).unwrap().into()))
             .await;

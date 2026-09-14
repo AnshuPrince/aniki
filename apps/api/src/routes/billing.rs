@@ -1,7 +1,7 @@
+use aniki_domain::CreditsResponse;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
-use aniki_domain::CreditsResponse;
 
 use crate::state::AppState;
 

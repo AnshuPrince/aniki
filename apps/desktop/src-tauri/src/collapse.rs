@@ -25,7 +25,8 @@ impl Default for CollapseState {
 }
 
 fn main_window(app: &AppHandle) -> Result<tauri::WebviewWindow, String> {
-    app.get_webview_window("main").ok_or_else(|| "main window not found".to_string())
+    app.get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())
 }
 
 pub fn collapse_overlay(app: &AppHandle, state: &CollapseState) -> Result<(), String> {
@@ -41,10 +42,8 @@ pub fn collapse_overlay(app: &AppHandle, state: &CollapseState) -> Result<(), St
     let height = size.height as f64 / scale;
 
     if width > PEBBLE_SIZE + 10.0 && height > PEBBLE_SIZE + 10.0 {
-        *state.saved_width.lock().map_err(|e| e.to_string())? =
-            width.max(MIN_EXPANDED_WIDTH);
-        *state.saved_height.lock().map_err(|e| e.to_string())? =
-            height.max(MIN_EXPANDED_HEIGHT);
+        *state.saved_width.lock().map_err(|e| e.to_string())? = width.max(MIN_EXPANDED_WIDTH);
+        *state.saved_height.lock().map_err(|e| e.to_string())? = height.max(MIN_EXPANDED_HEIGHT);
     }
 
     window

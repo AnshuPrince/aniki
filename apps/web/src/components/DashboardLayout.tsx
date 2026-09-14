@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { Button, cn } from "@aniki/ui";
 import { useAuth } from "../lib/auth";
 
@@ -17,7 +17,9 @@ export function DashboardLayout() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-8">
-            <span className="text-xl font-bold text-primary">Aniki</span>
+            <Link to="/" className="text-xl font-bold text-primary">
+              Aniki
+            </Link>
             <nav className="flex gap-1">
               {navItems.map((item) => (
                 <NavLink

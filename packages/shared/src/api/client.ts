@@ -4,6 +4,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   CreditsResponse,
+  DesktopRelease,
   GoogleOAuthStartResponse,
   HealthResponse,
   MagicLinkResponse,
@@ -109,6 +110,14 @@ export class AnikiClient {
       method: "POST",
       body: JSON.stringify({ filename, content_base64: contentBase64 }),
     });
+  }
+
+  async deleteResume(resumeId: string): Promise<void> {
+    await this.request(`/resumes/${resumeId}`, { method: "DELETE" });
+  }
+
+  async desktopLatest(): Promise<DesktopRelease> {
+    return this.request<DesktopRelease>("/desktop/latest");
   }
 
   async listSessions(): Promise<SessionListResponse> {

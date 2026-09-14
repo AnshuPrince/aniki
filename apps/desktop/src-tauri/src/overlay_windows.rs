@@ -3,9 +3,7 @@ use tauri::{AppHandle, Manager, WebviewWindow};
 use crate::macos_overlay;
 
 pub fn configure_overlay_window(window: &WebviewWindow) -> Result<(), String> {
-    window
-        .set_always_on_top(true)
-        .map_err(|e| e.to_string())?;
+    window.set_always_on_top(true).map_err(|e| e.to_string())?;
     #[cfg(target_os = "macos")]
     {
         window

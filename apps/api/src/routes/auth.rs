@@ -1,10 +1,10 @@
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::Json;
 use aniki_domain::{
     AuthResponse, GoogleOAuthCallbackRequest, GoogleOAuthStartResponse, MagicLinkRequest,
     MagicLinkResponse, UserProfile, VerifyTokenRequest,
 };
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::Json;
 
 use crate::services::auth;
 use crate::state::AppState;

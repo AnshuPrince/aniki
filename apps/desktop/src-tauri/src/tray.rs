@@ -16,7 +16,8 @@ pub fn request_quit(app: &AppHandle) {
 
 pub fn install(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItemBuilder::with_id("show", "Show overlay").build(app)?;
-    let click_through = MenuItemBuilder::with_id("click_through", "Toggle click-through").build(app)?;
+    let click_through =
+        MenuItemBuilder::with_id("click_through", "Toggle click-through").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit Aniki").build(app)?;
     let menu = MenuBuilder::new(app)
         .item(&show)

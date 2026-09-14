@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@aniki/ui";
+import { DesktopDownloads } from "../components/DesktopDownloads";
 import { useAuth } from "../lib/auth";
 
 export function DashboardPage() {
@@ -31,9 +32,7 @@ export function DashboardPage() {
             <CardDescription>Stealth overlay for live interviews</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Open the Aniki desktop app when you are ready to join a session.
-            </p>
+            <DesktopDownloads />
           </CardContent>
         </Card>
 
