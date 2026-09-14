@@ -15,8 +15,8 @@ on:
 ## Jobs (sketch)
 
 1. **gate** — `ubuntu-latest`: assert GitHub Actions check `CI` succeeded for that SHA; require `API_URL` and `WEB_URL`; fail if either is empty or contains `localhost`. Signing secrets are **not** required.
-2. **tauri-macos** — `macos-latest`: `pnpm tauri build --target aarch64-apple-darwin`, upload unsigned `.dmg`.
-3. **tauri-windows** — `windows-latest`: `pnpm tauri build --target x86_64-pc-windows-msvc`, upload unsigned NSIS `.exe`.
+2. **tauri-macos** — `macos-latest`: `pnpm install --frozen-lockfile`, then `tauri-action` with `tauriScript: pnpm tauri` for `aarch64-apple-darwin`, upload unsigned `.dmg`.
+3. **tauri-windows** — `windows-latest`: same install, `x86_64-pc-windows-msvc`, upload unsigned NSIS `.exe`.
 
 Env for Tauri:
 

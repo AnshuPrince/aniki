@@ -52,3 +52,9 @@ Append-only. Do not rewrite prior entries.
 - Cause: workflow `permissions` was only `contents: write`, which drops default `actions: read`.
 - Fix: add `actions: read`. Retag or push a new `v*` after this lands; the tagged SHA must include the workflow change.
 
+## 2026-09-14 — operate (tauri command not found)
+
+- Gate passed on retagged `v0.1.0`; macOS/Windows `tauri-action` failed immediately (`tauri: command not found` / `'tauri' is not recognized`).
+- Cause: no `pnpm install`; action defaulted to `npm run tauri` in a pnpm workspace.
+- Fix: install lockfile deps, `tauriScript: pnpm tauri`, `includeUpdaterJson: false`.
+
