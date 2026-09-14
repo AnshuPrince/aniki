@@ -57,13 +57,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
       - uses: tauri-apps/tauri-action@v0
         env:
+          CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_API_URL: ${{ vars.API_URL }}
           VITE_WEB_URL: ${{ vars.WEB_URL }}
         with:
           projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          includeUpdaterJson: false
           tagName: ${{ github.ref_name }}
           releaseName: Aniki ${{ github.ref_name }}
           releaseDraft: false
@@ -85,13 +90,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
       - uses: tauri-apps/tauri-action@v0
         env:
+          CI: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_API_URL: ${{ vars.API_URL }}
           VITE_WEB_URL: ${{ vars.WEB_URL }}
         with:
           projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          includeUpdaterJson: false
           tagName: ${{ github.ref_name }}
           releaseName: Aniki ${{ github.ref_name }}
           releaseDraft: false
