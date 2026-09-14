@@ -46,3 +46,9 @@ Append-only. Do not rewrite prior entries.
 - Download UI documents Gatekeeper Open anyway and SmartScreen Run anyway.
 - ADR decision 4 overridden in place (unsigned Latest is now allowed).
 
+## 2026-09-14 — operate (release gate 403)
+
+- Tag `v0.1.0` gate failed: `gh run list` returned HTTP 403 Resource not accessible by integration.
+- Cause: workflow `permissions` was only `contents: write`, which drops default `actions: read`.
+- Fix: add `actions: read`. Retag or push a new `v*` after this lands; the tagged SHA must include the workflow change.
+
