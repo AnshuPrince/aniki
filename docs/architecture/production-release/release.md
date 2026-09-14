@@ -10,7 +10,7 @@ on:
     tags: ["v*.*.*"]
 ```
 
-`permissions: contents: write` (create Release + upload assets). `environment: release`.
+`permissions: contents: write` (create Release + upload assets) and `actions: read` (gate job lists the CI workflow for the tag SHA). `environment: release`.
 
 ## Jobs (sketch)
 
