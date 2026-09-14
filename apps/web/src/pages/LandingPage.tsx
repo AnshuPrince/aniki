@@ -34,7 +34,7 @@ const faqs = [
   {
     question: "Which desktop platforms are supported?",
     answer:
-      "The app builds for macOS and Windows. Screen OCR is currently macOS-only; Windows audio capture is available but still needs broader device testing.",
+      "The overlay ships for Apple Silicon macOS. Windows is not part of this release. Screen OCR uses on-device Vision on Mac.",
   },
   {
     question: "Can it help with coding interviews?",

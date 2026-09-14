@@ -11,8 +11,8 @@ Supersedes `docs/architecture/ci-cd/adr.md` **decision 7** (desktop CI-only). AP
 
 ## Touches (when Build runs)
 
-- `.github/workflows/release.yml` (new; tags `v*`)
-- `.github/workflows/ci.yml` (optional: `upload-artifact` on PRs for unsigned smoke only — not Latest)
+- `.github/workflows/ci.yml` (Linux only; no Tauri)
+- `scripts/ci-local.sh`, `scripts/release-desktop.sh`
 - `apps/desktop/src-tauri/tauri.conf.json` (bundle names; no signing placeholders for v1)
 - `apps/desktop/src-tauri/src/commands.rs` (keyring get/set/delete)
 - `apps/desktop/src/lib/api.ts`, `overlay/context/OverlayContext.tsx`, `overlay/screens/LoginScreen.tsx`

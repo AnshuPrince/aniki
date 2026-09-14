@@ -50,9 +50,8 @@ export function LoginScreen() {
               <span className="text-foreground">Copy access token</span> on the Sessions page.
             </p>
             <p className="text-xs text-muted-foreground">
-              macOS: allow Microphone and Screen Recording (system audio + OCR) in System
-              Settings → Privacy &amp; Security. Windows: allow the microphone; grant capture
-              access if Windows prompts for loopback audio.
+              Allow Microphone and Screen Recording (system audio + OCR) in System Settings →
+              Privacy &amp; Security.
             </p>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>

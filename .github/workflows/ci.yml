@@ -3,8 +3,16 @@ name: CI
 on:
   pull_request:
     branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - ".cursor/**"
+      - "**/*.md"
   push:
     branches: [master]
+    paths-ignore:
+      - "docs/**"
+      - ".cursor/**"
+      - "**/*.md"
 
 permissions:
   contents: read
@@ -47,7 +55,7 @@ jobs:
       DATABASE_URL: postgres://aniki:aniki@localhost:5432/aniki
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret
-      # Desktop overlay + cpal/ALSA stay on the macOS/Windows Tauri jobs.
+      # Overlay compile is local macOS only (scripts/ci-local.sh --desktop).
       CARGO_LINUX_EXCLUDES: --exclude aniki-desktop --exclude aniki-audio-core
     steps:
       - uses: actions/checkout@v4
@@ -98,43 +106,3 @@ jobs:
 
       - name: Build web
         run: pnpm --filter @aniki/web build
-
-  tauri:
-    name: Tauri build
-    runs-on: ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          pnpm install --frozen-lockfile
-          cd apps/desktop && pnpm tauri build --target ${{ matrix.target }}
-        env:
-          CI: true
-
-      - name: Install dependencies (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          pnpm install --frozen-lockfile
-          cd apps/desktop
-          pnpm tauri build --target ${{ matrix.target }}
-        env:
-          CI: true

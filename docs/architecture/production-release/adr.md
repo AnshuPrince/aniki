@@ -11,11 +11,11 @@ Fly + Pages are live. Desktop is compiled in CI and thrown away. Dashboard copy 
 
 1. **Distribution:** Direct download via **GitHub Releases**. No App Store, Microsoft Store, or TestFlight in this slice. Auto-update (`tauri-plugin-updater`) is **P1**, not v1.
 
-2. **When to cut a desktop build:** Workflow `release.yml` on push of tags matching `v*` (semver, e.g. `v0.1.0`). Requires the same SHA to have a green **CI** run (check via `gh` / `workflow_run` on tag, or job that fails if `ci.yml` on that SHA failed). Do **not** attach installers to every `master` deploy.
+2. **When to cut a desktop build:** Operator **Mac** via `scripts/release-desktop.sh` (unsigned Apple Silicon `.dmg`). Windows NSIS is deferred. Do **not** attach installers to every `master` deploy. Do **not** use GitHub-hosted macOS/Windows runners for Tauri.
 
-3. **Matrix:** macOS `aarch64-apple-darwin` (Apple Silicon `.dmg`) and Windows `x86_64-pc-windows-msvc` (NSIS or WiX from Tauri `bundle.targets`). No Linux, no Intel Mac in v1. Landing/dashboard must not offer those assets.
+3. **Matrix:** macOS `aarch64-apple-darwin` only. No Linux, no Intel Mac, no Windows in this slice. Landing/dashboard must not offer those assets.
 
-4. **Signing (v1 override, 2026-09-14):** Publish **unsigned** GitHub Release installers. Do **not** require Apple Developer Program or Windows Authenticode for the first `v*` tags. Gate still requires green CI and production `API_URL` / `WEB_URL` (no localhost). PR `ci.yml` Tauri jobs stay unsigned compile-only and never attach to Latest. Developer ID + notarization and Authenticode remain a later upgrade.
+4. **Signing (v1 override, 2026-09-14):** Publish **unsigned** GitHub Release installers from a **local** Tauri build. Do **not** require Apple Developer Program or Windows Authenticode. `scripts/release-desktop.sh` fails if `VITE_API_URL` / `VITE_WEB_URL` are empty or contain `localhost`. GitHub `ci.yml` is Linux-only (no Tauri). Developer ID + notarization and Authenticode remain a later upgrade.
 
 5. **Baked URLs:** Release Tauri build **requires** `VITE_API_URL` and `VITE_WEB_URL` (HTTPS Fly and Pages origins). Empty or `localhost` → fail the job. Same values as GitHub variables `API_URL` and a new `WEB_URL` (Pages origin).
 
@@ -38,7 +38,7 @@ Fly + Pages are live. Desktop is compiled in CI and thrown away. Dashboard copy 
 11. **Landing while signed in:** `/` always renders the landing page. Remove `LandingRoute` bounce to `/app`. Signed-in nav: Open app → `/app`. Login/OAuth success still goes to `/app`. This supersedes `docs/stories/landing/story-01.md` “session on `/` → `/app`”.
 
 ## Consequences
-- Candidates must bypass Gatekeeper (macOS: Open anyway) and SmartScreen (Windows: More info → Run anyway). Document this in the download UI.
+- Candidates must bypass Gatekeeper (right-click → Open). Windows is not shipped.
 - Anyone can spoof an unsigned installer more easily; mitigate with HTTPS GitHub Releases for this repo and session-gated `GET /desktop/latest`.
 - Keychain will show an OS prompt on first save; document it.
 - `docs/architecture/ci-cd/adr.md` decision 7 is **replaced** by this ADR.

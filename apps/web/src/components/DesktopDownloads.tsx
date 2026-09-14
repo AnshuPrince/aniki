@@ -18,36 +18,27 @@ export function DesktopDownloads() {
     return <p className="text-sm text-muted-foreground">Checking for installers…</p>;
   }
 
-  if (!release?.macos_dmg && !release?.windows_exe) {
+  if (!release?.macos_dmg) {
     return (
-      <p className="text-sm text-muted-foreground">Desktop installers are not published yet.</p>
+      <p className="text-sm text-muted-foreground">
+        The Mac overlay is not published yet. Windows is not offered in this release.
+      </p>
     );
   }
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {release.macos_dmg && (
-          <a
-            className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            href={release.macos_dmg}
-          >
-            Download for Mac
-          </a>
-        )}
-        {release.windows_exe && (
-          <a
-            className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            href={release.windows_exe}
-          >
-            Download for Windows
-          </a>
-        )}
+        <a
+          className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          href={release.macos_dmg}
+        >
+          Download for Mac
+        </a>
       </div>
       <p className="text-xs text-muted-foreground">
-        Installers are unsigned. On Mac, right-click the app and choose Open if Gatekeeper
-        warns about an unidentified developer. On Windows, use More info → Run anyway if
-        SmartScreen appears.
+        Apple Silicon only. The installer is unsigned — right-click the app and choose Open if
+        Gatekeeper warns about an unidentified developer. Windows is not available yet.
       </p>
     </div>
   );

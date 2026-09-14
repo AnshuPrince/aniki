@@ -58,3 +58,11 @@ Append-only. Do not rewrite prior entries.
 - Cause: no `pnpm install`; action defaulted to `npm run tauri` in a pnpm workspace.
 - Fix: install lockfile deps, `tauriScript: pnpm tauri`, `includeUpdaterJson: false`.
 
+## 2026-09-14 — operate (cut hosted Tauri minutes)
+
+- GitHub billing blocked Deploy; macOS/Windows Tauri CI + `release.yml` were the expensive jobs.
+- Removed Tauri matrix from `ci.yml` and deleted `release.yml`. Linux CI remains so Deploy can still key off green `master`.
+- Local: `scripts/ci-local.sh` and `scripts/release-desktop.sh` (Darwin only; Apple Silicon `.dmg`). Playbook `docs/playbook/local-ci-and-desktop-release.md`.
+- Windows installer and NSIS target deferred.
+- Docs-only pushes skip CI (`paths-ignore`).
+

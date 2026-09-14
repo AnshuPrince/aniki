@@ -88,7 +88,7 @@ The overlay **Magic link** tab is leftover from log-only email sign-in and is no
 
 ### Desktop (macOS)
 
-Production installers are GitHub Releases (unsigned `.dmg` / NSIS), shown after you sign in on the dashboard (or on `/` while signed in). PR CI Tauri builds are compile-only and are not published. macOS Gatekeeper and Windows SmartScreen will warn because the binaries are not Developer ID / Authenticode signed.
+Production installers are GitHub Releases (unsigned Apple Silicon `.dmg`), shown after you sign in. Windows is not offered yet. Gatekeeper may warn; right-click → Open.
 
 - There is no Dock icon. Use the **menu bar tray**: Show overlay, Toggle click-through, Quit Aniki.
 - Grant **Microphone** and **Screen Recording** (interviewer system audio + OCR) in System Settings → Privacy & Security.
@@ -109,7 +109,7 @@ GitHub Actions workflow **CI** (`.github/workflows/ci.yml`) runs on pull request
 
 - Rust: Postgres + Redis services, `001` + `002` migrations, `cargo check` / `clippy` / `test`
 - Frontend: `pnpm typecheck`, `pnpm lint`, `@aniki/web` production build
-- Tauri: macOS and Windows overlay builds (unsigned compile gate). Installers ship from **Release desktop** on `v*` tags (also unsigned until signing certs are added later).
+- No hosted Tauri jobs (macOS/Windows minutes). Overlay compile and installer upload: [`docs/playbook/local-ci-and-desktop-release.md`](docs/playbook/local-ci-and-desktop-release.md) (`./scripts/ci-local.sh`, `./scripts/release-desktop.sh`).
 
 PR runs cancel when a newer commit is pushed. Keep the workflow `name: CI` — deploy keys off that name.
 
@@ -124,7 +124,7 @@ CD is `.github/workflows/deploy.yml`. After **CI succeeds on a push to `master`*
 | Postgres | Neon + pgvector |
 | Redis | Upstash (Fly secret `REDIS_URL`) |
 | Objects | R2 later — not required for first deploy |
-| Desktop | GitHub Releases (unsigned `.dmg` / NSIS), download after sign-in |
+| Desktop | GitHub Releases (unsigned Mac `.dmg`), download after sign-in |
 
 ### One-time vendor setup
 
@@ -146,13 +146,16 @@ Google sign-in uses a Web OAuth client. Redirects must be `http://localhost:3000
 
 **Variables:** `API_URL` (Fly HTTPS origin, used for health checks and `VITE_API_URL` at Pages build), `CLOUDFLARE_PAGES_PROJECT`.
 
-### GitHub Environment `release`
+### Desktop installers (local, not Actions)
 
-Used by `.github/workflows/release.yml` on `v*` tags. **Does not publish if `API_URL` or `WEB_URL` is empty or contains `localhost`.** Apple/Windows signing secrets are not required.
+Do not tag to trigger hosted macOS/Windows runners. On this machine:
 
-**Variables:** `API_URL`, `WEB_URL` (Pages origin; baked into the overlay as `VITE_*`).
+```bash
+./scripts/ci-local.sh
+VITE_API_URL=https://aniki-api.fly.dev VITE_WEB_URL=https://aniki-web.pages.dev ./scripts/release-desktop.sh v0.1.1
+```
 
-Tag a SHA that already has green **CI**, then `git push origin v0.1.0`.
+See [`docs/playbook/local-ci-and-desktop-release.md`](docs/playbook/local-ci-and-desktop-release.md). GitHub Environment `release` is unused after this change.
 
 Rollback: `fly releases rollback -a aniki-api`; Pages dashboard → previous deployment; Neon PITR / branch restore. GitHub Release: mark the previous tag as latest.
 
